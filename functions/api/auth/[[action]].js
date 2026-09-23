@@ -51,7 +51,9 @@ export async function onRequest(context) {
       method: request.method,
       headers: upstreamHeaders,
       body: bodyData,
-      redirect: "follow"
+      redirect: "follow",
+      cache: "no-store",
+      cf: { cacheTtl: 0, cacheEverything: false }
     });
 
     const responseHeaders = new Headers(upstreamResponse.headers);
@@ -76,3 +78,4 @@ export async function onRequest(context) {
     });
   }
 }
+
