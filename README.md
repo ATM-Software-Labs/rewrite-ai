@@ -1,14 +1,14 @@
 # Rewrite AI - Zero-AI Stealth Text Humanizer & Anti-Plagiarism Engine
 
-[![Cloudflare Pages](https://img.shields.io/badge/Deployed%20on-Cloudflare%20Pages-f38020.svg?style=flat-square&logo=cloudflare)](https://rewrite.trujillomingorance.com)
-[![Engine](https://img.shields.io/badge/AI%20Engine-Workers%20AI%20%2B%20Groq%20LPU-6366f1.svg?style=flat-square)](https://trujillomingorance.com)
+[![Cloudflare Pages](https://img.shields.io/badge/Deployed%20on-Cloudflare%20Pages-f38020.svg?style=flat-square&logo=cloudflare)](https://subdomain.yourdomain.com)
+[![Engine](https://img.shields.io/badge/AI%20Engine-Workers%20AI%20%2B%20Groq%20LPU-6366f1.svg?style=flat-square)](https://yourdomain.com)
 [![Co-Authored with Claude](https://img.shields.io/badge/Co--Authored%20with-Claude%20(Anthropic)-D97706?style=flat-square&logo=anthropic&logoColor=white)](https://anthropic.com)
-[![Detection Score](https://img.shields.io/badge/Turnitin%20%2F%20ZeroGPT-0%25%20AI%20Bypass-10b981.svg?style=flat-square)](https://rewrite.trujillomingorance.com)
+[![Detection Score](https://img.shields.io/badge/Turnitin%20%2F%20ZeroGPT-0%25%20AI%20Bypass-10b981.svg?style=flat-square)](https://subdomain.yourdomain.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg?style=flat-square)](LICENSE)
 
 **Rewrite AI** is an enterprise-grade text humanization and anti-plagiarism engine built on statistical entropy heuristics. It systematically deconstructs the uniform syntax, flat burstiness, and predictive n-grams of LLMs (ChatGPT, Claude, Gemini, DeepSeek), transforming robotic outputs into authentic human prose that scores **0% AI** on **Turnitin, GPTZero, ZeroGPT, CopyLeaks, Scribbr, and Winston AI**.
 
-Live URL: [https://rewrite.trujillomingorance.com](https://rewrite.trujillomingorance.com)
+Live URL: [https://subdomain.yourdomain.com](https://subdomain.yourdomain.com)
 
 ---
 
@@ -57,7 +57,7 @@ Live URL: [https://rewrite.trujillomingorance.com](https://rewrite.trujillomingo
 
 ### 1. Clone the repository
 ```bash
-git clone https://github.com/atrumin16/rewrite-ai.git
+git clone https://github.com/your-github-username/rewrite-ai.git
 cd rewrite-ai
 ```
 
@@ -78,7 +78,7 @@ Deploy directly to Cloudflare Pages from the command line:
 npx wrangler pages deploy public --project-name=rewrite-ai
 ```
 
-To configure your custom domain on trujillomingorance.com:
+To configure your custom domain on yourdomain.com:
 ```bash
 npx wrangler pages project create rewrite-ai --production-branch main
 ```
@@ -124,4 +124,5 @@ Humanizes input text to eliminate AI signatures.
 
 Distributed under the **MIT License**. See [LICENSE](LICENSE) for details.
 
-Developed by [Alberto Trujillo Mingorance](https://trujillomingorance.com) (@atrumin16) in collaboration with **Claude** (Anthropic).
+Developed by [Your Name](https://yourdomain.com) (@your-github-username) in collaboration with **Claude** (Anthropic).
+
