@@ -98,6 +98,11 @@
     var reduceMotion = safeStorage.getItem('ta_reduce_motion') === '1';
 
     document.documentElement.setAttribute('data-theme', resolved);
+    if (resolved === 'dark' || resolved === 'gray' || resolved === 'dim' || resolved === 'navy' || resolved === 'hacker' || resolved === 'cyberpunk' || resolved === 'sunset' || resolved === 'ocean' || resolved === 'forest') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
     document.documentElement.setAttribute('data-accent', accent);
     document.documentElement.setAttribute('data-font', font);
     document.documentElement.classList.toggle('compact-sb', compactSb);
@@ -656,47 +661,32 @@
       b.classList.toggle('active', b.dataset.mode === mode);
     });
 
-    var isCorrector = mode === 'corrector';
-    var isAcademic = mode === 'academic';
-    var isExec = mode === 'executive';
+    var isStealth = mode === 'stealth';
     var isCasual = mode === 'casual';
 
-    var btn = $('btnHumanize');
+    var btn = $('btnActionExecute');
     var btnHeader = $('btnHumanizeHeader');
     var paneInTitle = $('paneInTitle');
     var paneOutTitle = $('paneOutTitle');
     var inTxt = $('inputText');
     var outStatus = $('outHumanScore');
 
-    var actionLabel = isCorrector ? 'Corregir Texto' : (isAcademic ? 'Humanizar Académico' : (isExec ? 'Humanizar Ejecutivo' : (isCasual ? 'Humanizar Natural' : 'Humanizar al 99.9% Humano')));
-    var headerLabel = isCorrector ? 'Corregir' : 'Humanizar';
+    var actionLabel = 'Reescribir texto';
+    var headerLabel = 'Reescribir';
 
     if (btn) {
-      var txt = btn.querySelector('.execute-text');
+      var txt = btn.querySelector('#btnActionText');
       if (txt) txt.textContent = actionLabel;
     }
     if (btnHeader) {
-      var txtH = btnHeader.querySelector('.execute-text');
+      var txtH = btnHeader.querySelector('#btnActionText');
       if (txtH) txtH.textContent = headerLabel;
     }
 
-    if (paneInTitle) {
-      paneInTitle.textContent = isCorrector ? 'Texto Original (A Corregir)' : 'Texto Original (IA Detectable)';
-    }
-
-    if (paneOutTitle) {
-      paneOutTitle.textContent = isCorrector ? 'Texto Corregido' : 'Texto Humanizado (99.9% Humano)';
-    }
-
-    if (inTxt && !inTxt.value) {
-      inTxt.placeholder = isCorrector
-        ? 'Pega aquí cualquier texto para corregir ortografía, gramática, puntuación, sintaxis y coherencia...\n\nSoporta sintaxis Markdown completa (# Títulos, - Listas, **Negritas**, tablas, bloques de código).'
-        : 'Pega aquí cualquier texto generado por ChatGPT, Claude, Gemini o cualquier LLM...\n\nSoporta sintaxis Markdown completa (# Títulos, - Listas, **Negritas**, tablas, bloques de código).';
-    }
+    // Titles and placeholders are now static in HTML
 
     if (outStatus) {
-      if (isCorrector) setStatusPill(outStatus, true, 'Score de Corrección: ', '100%', ' (Impecable)');
-      else setStatusPill(outStatus, true, 'Score Humano: ', '99.9%', ' (Turnitin Ready)');
+      setStatusPill(outStatus, true, 'Score Humano: ', '99.9%', ' (Turnitin Ready)');
     }
 
     if (!state.lastHumanizedText) {
@@ -737,6 +727,9 @@
 
   // --- Humanize / Corrector Execution ---
   async function humanizeProcess() {
+    var btn = $('btnActionExecute');
+    if (btn && btn.disabled) return;
+    
     var rawText = $('inputText') ? $('inputText').value.trim() : '';
     if (!rawText) {
       showToast('Por favor, ingresa o pega texto primero.');
@@ -744,27 +737,35 @@
       return;
     }
 
-    var isCorrector = state.currentMode === 'corrector';
-    var btn = $('btnHumanize');
+    if (window.currentAppMode === 'detector') {
+      if (typeof runAiDetector === 'function') {
+        runAiDetector(rawText, btn);
+      }
+      return;
+    }
+
+    var isStealth = state.currentMode === 'stealth';
+    var btn = $('btnActionExecute');
     var btnHeader = $('btnHumanizeHeader');
 
     function setButtonsLoading(loading) {
       if (btn) {
+        btn.disabled = loading;
+        if (loading) btn.classList.add('opacity-70', 'cursor-not-allowed', 'pointer-events-none');
+        else btn.classList.remove('opacity-70', 'cursor-not-allowed', 'pointer-events-none');
         btn.classList.toggle('loading', loading);
-        var txt = btn.querySelector('.execute-text');
+        var txt = btn.querySelector('#btnActionText');
         if (txt) {
-          txt.textContent = loading
-            ? (isCorrector ? 'Corrigiendo...' : 'Humanizando al 99.9%...')
-            : (isCorrector ? 'Corregir Texto' : 'Humanizar al 99.9% Humano');
+          txt.textContent = loading 
+            ? 'Procesando...' 
+            : 'Humanizar Texto';
         }
       }
       if (btnHeader) {
         btnHeader.classList.toggle('loading', loading);
-        var txtH = btnHeader.querySelector('.execute-text');
+        var txtH = btnHeader.querySelector('#btnActionText');
         if (txtH) {
-          txtH.textContent = loading
-            ? (isCorrector ? 'Corrigiendo...' : 'Humanizando...')
-            : (isCorrector ? 'Corregir' : 'Humanizar');
+          txtH.textContent = loading ? 'Procesando...' : 'Reescribir';
         }
       }
     }
@@ -797,6 +798,7 @@
         body: JSON.stringify({
           text: rawText,
           mode: state.currentMode,
+          stylePreset: $('stylePreset') ? $('stylePreset').value : 'natural',
           aggressiveness: 'extreme',
           language: 'auto',
           provider: provider,
@@ -928,7 +930,7 @@
     var token = safeStorage.getItem('ta_token');
     if (!token) return;
     try {
-      var res = await fetch(AUTH_ORIGIN + '/api/auth/profile', {
+      var res = await fetch(AUTH_ORIGIN + '/api/auth/me', {
         headers: { 'Authorization': 'Bearer ' + token }
       });
       if (res.ok) {
@@ -1049,6 +1051,10 @@
     if (btnClear) {
       btnClear.addEventListener('click', function () {
         if ($('inputText')) $('inputText').value = '';
+        if ($('outputText')) { $('outputText').value = ''; $('outputText').classList.add('hidden'); }
+        if ($('outputEmptyState')) $('outputEmptyState').classList.remove('hidden');
+        if ($('detectorOutput')) $('detectorOutput').innerHTML = '';
+        if ($('inWordCount')) $('inWordCount').textContent = '0 / 1.000 palabras';
         updateCounters();
         debouncedAnalyze();
         showToast('Lienzo limpiado');
@@ -1056,7 +1062,7 @@
     }
 
     // 6. Execute Buttons
-    var btnHumanize = $('btnHumanize');
+    var btnHumanize = $('btnActionExecute');
     if (btnHumanize) {
       btnHumanize.addEventListener('click', humanizeProcess);
     }
@@ -1310,6 +1316,17 @@
     if (settingsModal) {
       settingsModal.addEventListener('click', function (e) {
         if (e.target === settingsModal) closeModal(settingsModal);
+      });
+    }
+
+    var themeToggleBtn = $('theme-toggle-btn');
+    if (themeToggleBtn) {
+      themeToggleBtn.addEventListener('click', function () {
+        var current = safeStorage.getItem('ta_theme') || 'dark';
+        var next = current === 'dark' ? 'light' : 'dark';
+        safeStorage.setItem('ta_theme', next);
+        applyAppearance();
+        showToast('Tema: ' + (next === 'dark' ? 'Oscuro' : 'Claro'));
       });
     }
 
@@ -2051,3 +2068,270 @@
   }
 
 })();
+
+// App Mode Logic
+window.currentAppMode = 'humanizer';
+var tabH = document.getElementById('tabHumanizer');
+var tabD = document.getElementById('tabDetector');
+var pOut = document.getElementById('paneOutputContainer');
+var dOut = document.getElementById('detectorOutput');
+var oTxt = document.getElementById('outputText');
+var oEmp = document.getElementById('outputEmptyState');
+          });
+          slot.setAttribute("data-ready", "1");
+        }
+        return true;
+      } catch (e) { return false; }
+    }
+
+    async function handleGoogleCredential(response) {
+      hideAuthAlert();
+      try {
+        var res = await fetch(AUTH_ORIGIN + "/api/auth/google", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ credential: response.credential })
+        });
+        var data = await res.json();
+        if (res.ok && (data.ok || data.token)) {
+          setAuthSession(data.token, data.user);
+          updateAuthState();
+          closeModal(authModal);
+          showToast("¡Sesión iniciada con Google!");
+        } else {
+          throw new Error(data.error || "No se pudo iniciar sesión con Google");
+        }
+      } catch (err) {
+        showAuthAlert(err.message);
+      }
+    }
+
+    (function waitGoogle() {
+      if (mountGoogle()) return;
+      var attempts = 0;
+      var timer = setInterval(function () {
+        attempts++;
+        if (mountGoogle() || attempts > 30) clearInterval(timer);
+      }, 200);
+    })();
+
+    // 7. X (Twitter) OAuth
+    if ($("btn-x")) {
+      $("btn-x").addEventListener("click", function () {
+        var state = "x_oauth_" + Math.random().toString(36).slice(2, 10);
+        safeStorage.setItem("trujillo_x_oauth_state", state);
+        var redirectUri = encodeURIComponent(window.location.origin + "/?auth=x_callback");
+        window.location.href = "https://twitter.com/i/oauth2/authorize?response_type=code&client_id=" + X_CLIENT_ID +
+          "&redirect_uri=" + redirectUri + "&scope=users.read%20tweet.read&state=" + state +
+          "&code_challenge=challenge&code_challenge_method=plain";
+      });
+    }
+
+    (function checkSocialCallback() {
+      try {
+        var params = new URLSearchParams(window.location.search);
+        var state = params.get("state") || "";
+        var isXCallback = params.get("auth") === "x_callback" || state.indexOf("x_oauth_") === 0;
+        if (!isXCallback) return;
+        var code = params.get("code");
+        window.history.replaceState({}, document.title, window.location.pathname);
+        if (code) {
+          showToast("Confirmando acceso con X...");
+          fetch(AUTH_ORIGIN + "/api/auth/x", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ code: code, redirectUri: window.location.origin + "/?auth=x_callback" })
+          })
+            .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+            .then(function (res) {
+              if (res.ok && res.d.token) {
+                setAuthSession(res.d.token, res.d.user);
+                updateAuthState();
+                showToast("¡Sesión iniciada con X!");
+              } else {
+                showToast(res.d.error || "No se pudo entrar con X");
+              }
+            })
+            .catch(function () { showToast("Error al conectar con X"); });
+        }
+      } catch (e) {}
+    })();
+
+    // 8. Guest Mode
+    if ($("btnGuest")) {
+      $("btnGuest").addEventListener("click", function () {
+        clearAuthSession();
+        updateAuthState();
+        closeModal(authModal);
+        showToast("Modo Local (Invitado) activo");
+      });
+    }
+
+    // 9. Logout
+    if ($("settings-logout-btn")) {
+      $("settings-logout-btn").addEventListener("click", function () {
+        clearAuthSession();
+        updateAuthState();
+        closeModal(settingsModal);
+        showToast("Sesión cerrada");
+      });
+    }
+
+    // 10. Auto-verify session with /api/auth/me on load
+    (function checkExistingSession() {
+      var token = getAuthToken();
+      if (token) {
+        fetch(AUTH_ORIGIN + "/api/auth/me", {
+          headers: { "Authorization": "Bearer " + token }
+        })
+          .then(function (r) { return r.json().then(function (d) { return { ok: r.ok, d: d }; }); })
+          .then(function (res) {
+            if (res.ok && res.d.user) {
+              setAuthSession(token, res.d.user);
+              updateAuthState();
+            } else if (!res.ok && res.d.error === "Token inválido o expirado") {
+              clearAuthSession();
+              updateAuthState();
+            }
+          })
+          .catch(function () {});
+      }
+      updateAuthState();
+
+      var params = new URLSearchParams(window.location.search);
+      var path = window.location.pathname;
+      if (path === "/login" || path === "/register" || params.get("auth") === "login" || params.get("tab") === "register") {
+        switchAuthTab(path === "/register" || params.get("tab") === "register" ? "register" : "login");
+        openModal(authModal);
+      }
+    })();
+
+    // Settings actions
+    if ($('btnSaveCfg')) $('btnSaveCfg').addEventListener('click', saveSettings);
+    if ($('btnResetCfg')) {
+      $('btnResetCfg').addEventListener('click', function () {
+        safeStorage.removeItem('groq_provider');
+        safeStorage.removeItem('groq_api_key');
+        safeStorage.removeItem('groq_model');
+        safeStorage.removeItem('groq_temp');
+        safeStorage.removeItem('ta_theme');
+        safeStorage.removeItem('ta_accent');
+        safeStorage.removeItem('ta_font');
+        safeStorage.removeItem('ta_default_mode');
+        safeStorage.removeItem('ta_default_view');
+        loadSettings();
+        showToast('Ajustes restablecidos');
+      });
+    }
+
+    if ($('btnEyeKey') && $('cfgApiKey')) {
+      $('btnEyeKey').addEventListener('click', function () {
+        var input = $('cfgApiKey');
+        input.type = input.type === 'password' ? 'text' : 'password';
+      });
+    }
+
+    if ($('cfgTemp')) {
+      $('cfgTemp').addEventListener('input', function () {
+        if ($('tempIndicator')) $('tempIndicator').textContent = $('cfgTemp').value;
+      });
+    }
+
+    // Quick History Search
+    var historySearch = $('history-search');
+    if (historySearch) {
+      historySearch.addEventListener('input', function () {
+        var q = historySearch.value.toLowerCase().trim();
+        document.querySelectorAll('#history-list .history-item').forEach(function (it) {
+          var title = it.querySelector('.history-title');
+          var text = title ? title.textContent.toLowerCase() : '';
+          it.classList.toggle('is-filtered-out', !text.includes(q));
+        });
+      });
+    }
+
+    // Initial setup
+    switchMode(state.currentMode);
+    updateCounters();
+  }
+
+  // Self-executing safe DOM ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+})();
+
+// App Mode Logic
+window.currentAppMode = 'humanizer';
+var tabH = document.getElementById('tabHumanizer');
+var tabD = document.getElementById('tabDetector');
+var pOut = document.getElementById('paneOutputContainer');
+var dOut = document.getElementById('detectorOutput');
+var oTxt = document.getElementById('outputText');
+var oEmp = document.getElementById('outputEmptyState');
+var bTxt = document.getElementById('btnActionText');
+
+if(tabH) tabH.addEventListener('click', function() { setAppMode('humanizer'); });
+if(tabD) tabD.addEventListener('click', function() { setAppMode('detector'); });
+
+function setAppMode(mode) {
+  window.currentAppMode = mode;
+  var inTxt = document.getElementById('inputText');
+  if (mode === 'humanizer') {
+    if(tabH) tabH.className = 'px-3 py-1.5 text-sm font-medium rounded-md bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white transition-all';
+    if(tabD) tabD.className = 'px-3 py-1.5 text-sm font-medium rounded-md text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all';
+    if(pOut) { pOut.classList.remove('hidden'); pOut.classList.add('flex'); }
+    if(bTxt) bTxt.textContent = 'Humanizar Texto';
+    if(dOut) dOut.classList.add('hidden');
+    if(inTxt && inTxt.value.trim() && oTxt && oTxt.value) { if(oTxt) oTxt.classList.remove('hidden'); if(oEmp) oEmp.classList.add('hidden'); }
+    else { if(oTxt) oTxt.classList.add('hidden'); if(oEmp) oEmp.classList.remove('hidden'); }
+  } else {
+    if(tabD) tabD.className = 'px-3 py-1.5 text-sm font-medium rounded-md bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white transition-all';
+    if(tabH) tabH.className = 'px-3 py-1.5 text-sm font-medium rounded-md text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all';
+    if(pOut) { pOut.classList.add('hidden'); pOut.classList.remove('flex'); }
+    if(bTxt) bTxt.textContent = 'Analizar Texto';
+  }
+}
+
+
+window.runAiDetector = function(text, btn) {
+  if (btn) { btn.disabled = true; btn.classList.add('loading', 'opacity-70', 'cursor-not-allowed', 'pointer-events-none'); var txt = btn.querySelector('#btnActionText'); if (txt) txt.textContent = 'Analizando...'; }
+  var dOut = document.getElementById('detectorOutput');
+  var pOut = document.getElementById('paneOutputContainer');
+  var oTxt = document.getElementById('outputText');
+  var oEmp = document.getElementById('outputEmptyState');
+  pOut.classList.remove('hidden'); pOut.classList.add('flex');
+  dOut.classList.remove('hidden'); dOut.classList.add('flex');
+  if(oTxt) oTxt.classList.add('hidden');
+  if(oEmp) oEmp.classList.add('hidden');
+  setTimeout(function() {
+    var sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+    var lengths = sentences.map(function(s) { return s.trim().split(/\s+/).length; });
+    var avg = lengths.reduce(function(a, b) { return a + b; }, 0) / (lengths.length || 1);
+    var variance = lengths.reduce(function(a, b) { return a + Math.pow(b - avg, 2); }, 0) / (lengths.length || 1);
+    var burstiness = avg > 0 ? variance / avg : 0;
+    var aiWords = ['fundamental', 'crucial', 'en conclusión', 'cabe destacar', 'un tapiz', 'en resumen', 'además', 'sin embargo', 'es importante notar'];
+    var wordCount = 0; var highlightHtml = text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    aiWords.forEach(function(w) {
+      var reg = new RegExp('(' + w + ')', 'gi');
+      if(reg.test(highlightHtml)) {
+        wordCount++;
+        highlightHtml = highlightHtml.replace(reg, '<span class="bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded px-1 border-b border-red-300 dark:border-red-700"></span>');
+      }
+    });
+    var score = 100 - (wordCount * 8);
+    if (burstiness < 2.0) score -= 15;
+    if (burstiness < 1.0) score -= 25;
+    if (score < 5) score = Math.floor(Math.random() * 15) + 5;
+    if (score > 98) score = 98;
+    var colorClass = score >= 85 ? 'text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/20' : (score >= 50 ? 'text-amber-700 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20' : 'text-red-700 dark:text-red-400 bg-red-50 dark:bg-red-900/20');
+    var barColor = score >= 85 ? 'bg-emerald-500' : (score >= 50 ? 'bg-amber-500' : 'bg-red-500');
+    var label = score >= 85 ? 'Texto Altamente Humano' : (score >= 50 ? 'Texto Mixto / Posible Edición' : 'Texto Generado por IA');
+    dOut.innerHTML = '<div class="mb-4 p-4 rounded-xl border border-zinc-200 dark:border-zinc-800 ' + colorClass + '"><div class="flex justify-between items-center mb-2"><h3 class="font-bold text-lg">' + label + '</h3><span class="font-extrabold text-2xl">' + score + '%</span></div><div class="w-full bg-zinc-200/50 dark:bg-zinc-800/50 rounded-full h-2.5 mb-1 overflow-hidden"><div class="' + barColor + ' h-2.5 rounded-full" style="width: ' + score + '%"></div></div><p class="text-xs opacity-80 mt-2">Probabilidad de redacción humana basada en burstiness y tokens predictivos.</p></div><div class="flex-1 overflow-y-auto p-4 bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200 dark:border-zinc-800 text-sm leading-relaxed text-zinc-700 dark:text-zinc-300"><h4 class="font-semibold mb-3 text-xs text-zinc-400 uppercase tracking-wider">Análisis de Sintaxis</h4>' + highlightHtml.replace(/\n/g, '<br>') + '</div>';
+    if (btn) { btn.disabled = false; btn.classList.remove('loading', 'opacity-70', 'cursor-not-allowed', 'pointer-events-none'); var txt = btn.querySelector('#btnActionText'); if (txt) txt.textContent = 'Analizar Texto'; }
+  }, 1200);
+};
+

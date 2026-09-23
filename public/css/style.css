@@ -32,10 +32,10 @@
 
 /* --- The 13 Full Theme Definitions from Trujillo AI Studio --- */
 html[data-theme="dark"] {
-  --bg: #080c14; --sidebar: #0a1018; --elev: #141c28; --elev-2: #1a2433;
-  --card: #111827; --input: #0a1018; --invert: #ffffff; --invert-fg: #000000;
-  --line: rgba(255,255,255,0.08); --line-2: rgba(255,255,255,0.14);
-  --text: #f8fafc; --muted: #94a3b8; --dim: #64748b;
+  --bg: #09090b; --sidebar: #18181b; --elev: #18181b; --elev-2: #27272a;
+  --card: #18181b; --input: #18181b; --invert: #059669; --invert-fg: #ffffff;
+  --line: #27272a; --line-2: rgba(255,255,255,0.14);
+  --text: #f4f4f5; --muted: #a1a1aa; --dim: #71717a;
 }
 
 html[data-theme="gray"] {
@@ -60,9 +60,9 @@ html[data-theme="navy"] {
 }
 
 html[data-theme="light"] {
-  --bg: #f4f4f5; --sidebar: #ececef; --elev: #ffffff; --elev-2: #e4e4e7;
-  --card: #ffffff; --input: #ececef; --invert: #18181b; --invert-fg: #ffffff;
-  --line: rgba(0,0,0,0.08); --line-2: rgba(0,0,0,0.14);
+  --bg: #fafafa; --sidebar: #ffffff; --elev: #ffffff; --elev-2: #e4e4e7;
+  --card: #ffffff; --input: #ffffff; --invert: #059669; --invert-fg: #ffffff;
+  --line: #d4d4d8; --line-2: rgba(0,0,0,0.14);
   --text: #18181b; --muted: #71717a; --dim: #a1a1aa;
   --blue: #0284c7; --green: #15803d; --red: #dc2626; --purple: #9333ea;
 }
@@ -206,31 +206,22 @@ button, input, textarea, select {
   display: block;
 }
 
-/* --- Sidebar --- */
 .ta-sidebar {
-  width: var(--sb);
+  position: fixed;
+  inset: 0 auto 0 0;
+  width: min(84vw, 310px);
+  transform: translateX(-105%);
+  transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 0 50px rgba(0, 0, 0, 0.85);
   background: var(--sidebar);
   border-right: 1px solid var(--line);
   display: flex;
   flex-direction: column;
-  flex-shrink: 0;
   z-index: 50;
-  min-height: 0;
-  transition: width 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  height: 100%;
 }
-
-@media (max-width: 860px) {
-  .ta-sidebar {
-    position: fixed;
-    inset: 0 auto 0 0;
-    width: min(84vw, 310px);
-    transform: translateX(-105%);
-    transition: transform 0.24s cubic-bezier(0.16, 1, 0.3, 1);
-    box-shadow: 0 0 50px rgba(0, 0, 0, 0.85);
-  }
-  .ta-sidebar.open {
-    transform: translateX(0);
-  }
+.ta-sidebar.open {
+  transform: translateX(0);
 }
 
 .sb-head {
@@ -610,13 +601,7 @@ button, input, textarea, select {
 }
 
 .menu-toggle-btn {
-  display: none;
-}
-
-@media (max-width: 860px) {
-  .menu-toggle-btn {
-    display: flex;
-  }
+  display: flex;
 }
 
 /* Model Picker */
@@ -2234,3 +2219,46 @@ html[data-accent="#fb7185"] { --blue: #fb7185; }
 .is-block { display: block !important; }
 .history-item.is-filtered-out { display: none !important; }
 .offscreen-copy { position: fixed; opacity: 0; pointer-events: none; }
+
+/* Utilities */
+.text-base { font-size: 16px; }
+.leading-relaxed { line-height: 1.625; }
+
+/* Mobile Responsiveness & Dock Updates */
+@media (max-width: 768px) {
+  .studio-workspace {
+    display: flex !important;
+    flex-direction: column !important;
+    overflow-y: auto !important;
+    height: 100% !important;
+  }
+  .studio-pane {
+    flex: none !important;
+    height: 50vh !important;
+    min-height: 400px !important;
+  }
+  .studio-floating-dock {
+    position: relative !important;
+    bottom: auto !important;
+    left: auto !important;
+    transform: none !important;
+    display: flex;
+    justify-content: center;
+    padding: 16px 0;
+    background: var(--bg);
+    z-index: 10;
+  }
+  .execute-dock-btn {
+    width: 90%;
+    padding: 16px;
+    font-size: 1.1rem;
+  }
+  .pane-input { border-bottom: none !important; border-right: none !important; }
+}
+.pane-actions-bottom { display: flex; gap: 8px; }
+.execute-dock-btn { padding: 12px 32px; font-size: 1.1rem; border-radius: 12px; font-weight: 600; box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+
+.studio-textarea { font-family: var(--font) !important; } 
+
+
+.studio-pane.pane-input { border-right: none !important; border-bottom: none !important; }

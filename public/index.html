@@ -12,297 +12,148 @@
   <link rel="apple-touch-icon" href="/avatar.png">
   <link rel="stylesheet" href="/css/tokens.css?v=nf1">
   <link rel="stylesheet" href="/css/style.css?v=nf1">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    if (window.tailwind) {
+      tailwind.config = {
+        darkMode: ['class', '[data-theme="dark"]'],
+        theme: {
+          extend: {}
+        }
+      }
+    }
+  </script>
   <script src="https://accounts.google.com/gsi/client" async defer></script>
 </head>
-<body>
+<body class="bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 font-sans transition-colors duration-200">
 
-<div class="ta-app" id="app">
-  <!-- Mobile Sidebar Overlay Backdrop -->
-  <div class="sidebar-overlay" id="sidebar-overlay"></div>
+<div class="flex flex-col h-screen overflow-hidden" id="app">
 
-  <!-- Left Sidebar (Trujillo AI Studio Layout) -->
-  <aside class="ta-sidebar" id="sidebar">
-    <div class="sb-head">
-      <a href="/" class="brand-logo" title="Trujillo AI Studio">
-        <img src="/avatar.png" alt="Trujillo AI" class="brand-avatar">
-        <span class="brand-title">Trujillo AI <span class="brand-badge">REWRITE</span></span>
-      </a>
-      <button id="sidebar-close-btn" class="icon-btn" type="button" title="Cerrar menú">✕</button>
-    </div>
-
-    <button id="btn-new-doc" class="new-chat-btn" type="button">
-      <span>+ <span>Nuevo Documento</span></span>
-      <span class="hint">⌘K</span>
-    </button>
-
-    <div class="style-tools">
-      <div class="style-tools-row">
-        <button type="button" class="style-tool-btn" id="btn-import-style" title="Importar guía de estilo">style.md</button>
-        <button type="button" class="style-tool-btn" id="btn-calibrar" title="Calibrar voz en 3 preguntas">[CALIBRAR]</button>
-      </div>
-      <input type="file" id="style-md-input" accept=".md,.txt,text/markdown,text/plain" class="hidden">
-      <div class="style-md-status" id="style-md-status">Sin guía de estilo. Importa style.md o pulsa [CALIBRAR].</div>
-    </div>
-
-    <div class="history-search-box">
-      <input type="search" id="history-search" class="history-search-input" placeholder="Buscar en historial…" autocomplete="off" spellcheck="false">
-    </div>
-
-    <div class="sb-tabs">
-      <button type="button" class="sb-tab active" data-tab="history" id="tab-history">Historial</button>
-      <button type="button" class="sb-tab" data-tab="samples" id="tab-samples">Muestras</button>
-      <button type="button" class="sb-tab" data-tab="guide" id="tab-guide">Anti-IA</button>
-    </div>
-
-    <!-- History Panel -->
-    <div class="history-list" id="history-list">
-      <!-- Injected by app.js -->
-    </div>
-
-    <!-- Samples Panel -->
-    <div class="history-list hidden" id="samples-list">
-      <div class="history-section-title">Plantillas 0% IA</div>
-      <button class="doc-item" data-preset="academic" type="button">
-        <span class="doc-title">Ensayo Académico (Turnitin)</span>
-      </button>
-      <button class="doc-item" data-preset="corrector" type="button">
-        <span class="doc-title">Corrección & Estilo Editorial</span>
-      </button>
-      <button class="doc-item" data-preset="tech" type="button">
-        <span class="doc-title">Arquitectura Markdown Técnica</span>
-      </button>
-      <button class="doc-item" data-preset="business" type="button">
-        <span class="doc-title">Propuesta Ejecutiva & Finanzas</span>
-      </button>
-      <button class="doc-item" data-preset="creative" type="button">
-        <span class="doc-title">Artículo de Opinión & Ensayo</span>
-      </button>
-    </div>
-
-    <!-- Guide Panel -->
-    <div class="history-list hidden" id="guide-list">
-      <div class="history-section-title">Heurística Anti-Detección</div>
-      <div class="guide-box">
-        <h4>Bypass Heurístico Turnitin y GPTZero</h4>
-        <p>Los detectores de IA evalúan dos métricas matemáticas fundamentales:</p>
-        <ul>
-          <li><strong>Perplejidad:</strong> Riqueza léxica y elección de combinaciones de palabras no predecibles.</li>
-          <li><strong>Burstiness:</strong> Variación asimétrica de la estructura de oraciones cortas y compuestas.</li>
-        </ul>
-        <p>Rewrite AI deconstruye los n-gramas predecibles de ChatGPT y Gemini inyectando variación rítmica humana.</p>
-      </div>
-    </div>
-
-    <div class="sb-foot">
-      <div class="sb-edge-status">
-        <span class="edge-dot"></span>
-        <span>Groq LPU Edge • 0% Turnitin</span>
-      </div>
-      <button type="button" id="open-settings-btn" class="sb-link" data-open-pane="pane-general">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        <span>Ajustes & Apariencia</span>
-      </button>
-      <a href="https://github.com/atrumin16/rewrite-ai" target="_blank" rel="noopener" class="sb-link">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0C5.37 0 0 5.37 0 12c0 5.31 3.435 9.795 8.205 11.385.6.105.825-.255.825-.57 0-.285-.015-1.23-.015-2.235-3.015.555-3.795-.735-4.035-1.41-.135-.345-.72-1.41-1.23-1.695-.42-.225-1.02-.78-.015-.795.945-.015 1.62.87 1.845 1.23 1.08 1.815 2.805 1.305 3.495.99.105-.78.42-1.305.765-1.605-2.67-.3-5.46-1.335-5.46-5.925 0-1.305.465-2.385 1.23-3.225-.12-.3-.54-1.53.12-3.18 0 0 1.005-.315 3.3 1.23.96-.27 1.98-.405 3-.405s2.04.135 3 .405c2.295-1.56 3.3-1.23 3.3-1.23.66 1.65.24 2.88.12 3.18.765.84 1.23 1.905 1.23 3.225 0 4.605-2.805 5.625-5.475 5.925.435.375.81 1.095.81 2.22 0 1.605-.015 2.895-.015 3.3 0 .315.225.69.825.57A12.02 12.02 0 0 0 24 12c0-6.63-5.37-12-12-12z"/></svg>
-        <span>GitHub Repo</span>
+  <!-- SaaS Header -->
+  <header class="w-full border-b border-zinc-800/80 bg-zinc-950/80 backdrop-blur-md px-6 py-2.5 flex items-center justify-between sticky top-0 z-50">
+      <a href="/" class="flex items-center hover:opacity-80 transition-opacity">
+        <div class="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-800 flex items-center justify-center text-white">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M17 3a2.828 2.828 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5L17 3z"></path></svg>
+        </div>
+        <span class="text-sm font-bold tracking-tight text-white ml-2.5">ATM REWRITE</span>
       </a>
 
-      <!-- User Profile Pill -->
-      <button type="button" class="user-pill" id="user-profile-pill">
-        <div class="user-pill-left">
-          <div class="avatar-letter" id="user-letter">A</div>
-          <div class="user-pill-text">
-            <div class="user-info-name" id="user-display-name">Invitado</div>
-            <div class="user-info-tier" id="user-display-tier">0% IA • Groq Edge</div>
-          </div>
-        </div>
+    <!-- Center Navigation Tabs -->
+    <nav class="hidden md:flex items-center gap-8">
+      <button class="text-sm font-medium text-zinc-900 dark:text-white relative py-1" type="button">
+        Humanizador
+        <span class="absolute bottom-[-16px] left-0 w-full h-[2px] bg-emerald-500 rounded-t-md"></span>
       </button>
+      <button class="text-sm font-medium text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors" type="button">
+        Detector de IA
+      </button>
+      <button class="text-sm font-medium text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors" type="button">
+        Asistente de Redacción
+      </button>
+    </nav>
+
+    <!-- Right Block Actions -->
+    <div class="flex items-center gap-4">
+      <!-- Theme Toggle -->
+      <button id="theme-toggle-btn" class="p-1.5 rounded-lg text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900 transition-colors" type="button" title="Alternar tema">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+      </button>
+
+      <!-- Language Selector -->
+      <button class="flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-semibold text-zinc-300 border border-zinc-800 bg-zinc-900/50" type="button">
+        <svg width="14" height="10" viewBox="0 0 750 500"><rect width="750" height="500" fill="#c60b1e"/><rect y="125" width="750" height="250" fill="#ffc400"/></svg>
+        ES
+      </button>
+
+      <!-- Access Button -->
+      <div class="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity" id="topbar-auth-btn">
+        <div class="bg-blue-600 text-white text-[11px] font-bold w-6 h-6 rounded-full flex items-center justify-center" id="topbar-letter">A</div>
+        <span class="text-xs font-medium text-zinc-200" id="topbar-auth-text">Alberto</span>
+      </div>
     </div>
-  </aside>
+  </header>
 
-  <!-- Main Studio Interface -->
-  <main class="ta-main">
-    <!-- Topbar (Minimalist, Zero Emotes) -->
-    <header class="ta-topbar">
-      <div class="topbar-left">
-        <button id="sidebar-toggle-btn" class="icon-btn menu-toggle-btn" type="button" title="Abrir menú" aria-label="Menú">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
-        </button>
-
-        <!-- Model Picker -->
-        <div class="model-picker" id="model-picker">
-          <button type="button" class="model-picker-btn" id="model-picker-btn" aria-haspopup="listbox" aria-expanded="false">
-            <span class="model-picker-label" id="model-picker-label">Llama 3.3 70B (Groq)</span>
-            <svg class="model-picker-caret" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 9l6 6 6-6"/></svg>
-          </button>
-          <div class="model-menu" id="model-menu" role="listbox">
-            <button class="model-option active" data-model="llama-3.3-70b-versatile" type="button">
-              <div class="model-option-name">Llama 3.3 70B Versatile</div>
-              <div class="model-option-desc">Groq LPU Edge • Máxima perplejidad (Recomendado)</div>
-            </button>
-            <button class="model-option" data-model="openai/gpt-oss-120b" type="button">
-              <div class="model-option-name">GPT OSS 120B</div>
-              <div class="model-option-desc">Groq LPU • Modelo ultra profundo de 120B parámetros</div>
-            </button>
-            <button class="model-option" data-model="qwen-2.5-32b" type="button">
-              <div class="model-option-name">Qwen 2.5 32B</div>
-              <div class="model-option-desc">Groq LPU • Extraordinaria precisión sintáctica</div>
-            </button>
-            <button class="model-option" data-model="openai/gpt-oss-20b" type="button">
-              <div class="model-option-name">GPT OSS 20B</div>
-              <div class="model-option-desc">Groq LPU • Inferencia ultrarrápida (~80ms)</div>
-            </button>
-            <button class="model-option" data-model="cf-llama-70b" type="button">
-              <div class="model-option-name">Cloudflare Workers AI</div>
-              <div class="model-option-desc">Llama 3.3 70B Instruct FP8 • Respaldo global Edge</div>
-            </button>
-          </div>
-        </div>
-      </div>
-
-      <!-- Mode Segmented Pills (Center - Minimalist, Pure Clean Text & Lines, No Emojis) -->
-      <div class="topbar-center">
-        <div class="mode-segmented-pill" id="mode-selector">
-          <button class="mode-opt-btn active" data-mode="stealth" type="button" title="Máxima disrupción de patrones para 99.9% Humano en Turnitin y GPTZero">
-            <span>Ultra-Stealth 99.9%</span>
-          </button>
-          <button class="mode-opt-btn" data-mode="corrector" type="button" title="Corrección ortográfica, gramatical, sintaxis y estilo editorial">
-            <span>Corrector de Textos</span>
-          </button>
-          <button class="mode-opt-btn" data-mode="academic" type="button" title="Conserva citas y rigor formal para Turnitin">
-            <span>Académico</span>
-          </button>
-          <button class="mode-opt-btn" data-mode="executive" type="button" title="Prosa concisa, directa y sin relleno corporativo">
-            <span>Ejecutivo</span>
-          </button>
-          <button class="mode-opt-btn" data-mode="casual" type="button" title="Tono natural, cotidiano y con ritmo orgánico">
-            <span>Natural</span>
-          </button>
-        </div>
-      </div>
-
-      <!-- Topbar Right Actions (Minimalist) -->
-      <div class="topbar-right">
-        <span class="status-badge-edge" title="Motor Groq LPU operativo en el Edge">
-          <span class="pulse-dot"></span>
-          <span>99.9% HUMANO</span>
-        </span>
-
-        <button id="topbar-settings-btn" class="topbar-icon-btn" type="button" title="Ajustes & Apariencia">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-        </button>
-
-        <button id="topbar-auth-btn" class="topbar-action-btn primary" type="button">
-          <span class="avatar-letter" id="topbar-letter">A</span>
-          <span id="topbar-auth-text">Acceder</span>
-        </button>
-      </div>
-    </header>
-
-    <!-- Split Studio Workspace (Minimalist Balanced 2-Pane Studio) -->
-    <div class="studio-workspace">
-      <!-- LEFT PANE: Input -->
-      <section class="studio-pane pane-input">
-        <div class="pane-header">
-          <div class="pane-meta">
-            <span class="pane-indicator dot-warn" id="paneInDot"></span>
-            <span class="pane-title" id="paneInTitle">Texto Original (IA Detectable)</span>
-            <span class="pane-stat" id="inWordCount">0 palabras</span>
-          </div>
-          <div class="pane-actions">
-            <button class="pane-btn primary pane-btn-execute" id="btnHumanizeHeader" type="button" title="Humanizar al 99.9% Humano (Ctrl + Enter)">
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-              <span class="execute-text">Humanizar</span>
-              <kbd class="execute-kbd">Ctrl+↵</kbd>
-            </button>
-            <button class="pane-btn" id="btnPaste" type="button" title="Pegar contenido">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
-              <span>Pegar</span>
-            </button>
-            <button class="pane-btn" id="btnClear" type="button" title="Limpiar lienzo">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-              <span>Limpiar</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="pane-editor-wrap">
-          <textarea id="inputText" class="studio-textarea" placeholder="Pega aquí cualquier texto generado por ChatGPT, Claude, Gemini o cualquier LLM...&#10;&#10;Soporta sintaxis Markdown completa (# Títulos, - Listas, **Negritas**, tablas, bloques de código)."></textarea>
-        </div>
-
-        <div class="pane-footer">
-          <div class="pane-status-pill" id="inAiScore">
-            <span class="dot-warn"></span>
-            <span>Detección inicial: <strong>Pendiente de análisis</strong></span>
-          </div>
-          <div class="pane-stat" id="inCharCount">0 caracteres</div>
-        </div>
-      </section>
-
-      <!-- Center Floating Action Dock (Minimalist, Non-Intrusive) -->
-      <div class="studio-floating-dock" id="studioFloatingDock">
-        <button id="btnHumanize" class="execute-dock-btn" type="button" title="Humanizar al 99.9% Humano (Ctrl + Enter)">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
-          <span class="execute-text">Humanizar al 99.9% Humano</span>
-          <kbd class="execute-kbd">Ctrl+↵</kbd>
-        </button>
-      </div>
-
-      <!-- RIGHT PANE: Output & Markdown Studio -->
-      <section class="studio-pane pane-output">
-        <div class="pane-header">
-          <div class="pane-meta">
-            <span class="pane-indicator dot-success" id="paneOutDot"></span>
-            <span class="pane-title" id="paneOutTitle">Texto Humanizado (99.9% Humano)</span>
-            <span class="pane-stat" id="outWordCount">0 palabras</span>
-          </div>
-          <div class="pane-center-tabs" id="outputViewTabs">
-            <button class="view-tab active" data-view="md" type="button">Vista MD</button>
-            <button class="view-tab" data-view="raw" type="button">Código MD</button>
-            <button class="view-tab" data-view="diff" type="button">Diff</button>
-          </div>
-          <div class="pane-actions">
-            <button class="pane-btn primary" id="btnCopy" type="button" title="Copiar Markdown al portapapeles">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
-              <span id="copyLabel">Copiar MD</span>
-            </button>
-            <button class="pane-btn" id="btnDownload" type="button" title="Descargar como .md">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-              <span>.md</span>
-            </button>
-          </div>
-        </div>
-
-        <div class="pane-editor-wrap">
-          <!-- Rendered HTML Markdown View (Minimalist empty state) -->
-          <div id="outputMdPreview" class="prose-ai studio-preview">
-            <div class="empty-studio-state">
-              <div class="empty-icon-svg">
-                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
-              </div>
-              <div class="empty-title" id="emptyTitle">Motor 99.9% Humano Listo</div>
-              <p class="empty-desc" id="emptyDesc">Pega un texto a la izquierda y pulsa <strong>Humanizar</strong> o <kbd>Ctrl + Enter</kbd>. Se reescribirán las palabras conservando el 100% de tu formato Markdown e idioma para superar todos los detectores de IA.</p>
-            </div>
-          </div>
-
-          <!-- Raw Textarea View -->
-          <textarea id="outputText" class="studio-textarea hidden" placeholder="El código Markdown humanizado aparecerá aquí..." spellcheck="false"></textarea>
-
-          <!-- Diff Viewer -->
-          <div id="diffPreview" class="diff-viewer studio-preview hidden"></div>
-        </div>
-
-        <div class="pane-footer">
-          <div class="pane-status-pill success" id="outHumanScore">
-            <span class="dot-success"></span>
-            <span>Score Humano: <strong>99.9%</strong> (Turnitin Ready)</span>
-          </div>
-          <div class="pane-stat" id="outCharCount">0 caracteres</div>
-        </div>
-      </section>
+  <!-- Hero Section (Lightweight) -->
+  <section class="flex flex-col items-center justify-center text-center py-10 px-4 shrink-0 z-10">
+    <div class="bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 text-xs px-3 py-1 rounded-full border border-emerald-200 dark:border-emerald-800 font-medium inline-block mb-4">
+      Motor Open Source · Cloudflare Edge & Groq LPU
     </div>
-  </main>
-</div>
+    <h1 class="text-3xl md:text-4xl font-extrabold text-zinc-900 dark:text-zinc-50 tracking-tight">
+      Reescribe texto de IA y dale un tono 100% humano
+    </h1>
+    <p class="text-zinc-500 dark:text-zinc-400 text-sm max-w-xl mx-auto mt-3">
+      Mejora el ritmo, elimina muletillas de IA y optimiza la naturalidad de redacciones, informes y artículos técnicos en segundos.
+    </p>
+  </section>
+
+    <!-- Central Workspace Card -->
+    <div class="max-w-5xl mx-auto mt-6 bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 rounded-2xl shadow-xl overflow-hidden flex flex-col relative z-10 w-full mb-12">
+      <!-- Top bar of the card -->
+      <div class="flex flex-wrap items-center justify-between px-4 py-3 border-b border-zinc-200 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50 gap-3">
+        <div class="flex items-center gap-1 bg-zinc-200/50 dark:bg-zinc-800/50 p-1 rounded-lg">
+          <button class="px-3 py-1.5 text-sm font-medium rounded-md bg-white dark:bg-zinc-700 shadow-sm text-zinc-900 dark:text-white transition-all" id="tabHumanizer">Humanizador</button>
+          <button class="px-3 py-1.5 text-sm font-medium rounded-md text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition-all" id="tabDetector">Detector de IA</button>
+        </div>
+        
+        <div class="flex items-center gap-3">
+          <!-- Dropdown Preset -->
+          <select id="stylePreset" class="text-xs bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-700 rounded-lg px-2 py-1.5 text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 shadow-sm">
+            <option value="natural" selected>Natural / Cotidiano</option>
+            <option value="academic">Académico & Formal</option>
+            <option value="simple">Simplificar / Modo Fácil</option>
+            <option value="executive">Resumen Ejecutivo</option>
+          </select>
+          <div class="w-px h-5 bg-zinc-300 dark:bg-zinc-700"></div>
+          <button id="btnClear" class="p-1 text-zinc-500 hover:text-red-500 transition-colors" title="Limpiar texto">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+          </button>
+          <button id="btnPaste" class="p-1 text-zinc-500 hover:text-emerald-600 transition-colors" title="Pegar texto">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1" ry="1"/></svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Workspace Split View -->
+      <div class="flex flex-col md:flex-row relative" id="workspaceContainer">
+        <!-- Left Pane -->
+        <div class="flex-1 flex flex-col relative" id="paneInputContainer">
+          <textarea id="inputText" class="w-full flex-1 bg-transparent text-zinc-800 dark:text-zinc-100 text-base leading-relaxed p-5 resize-none focus:outline-none min-h-[360px]" placeholder="Pega o escribe aquí el texto que quieres transformar..." spellcheck="false"></textarea>
+          <div class="absolute bottom-3 left-5">
+            <span class="text-xs text-zinc-400 dark:text-zinc-500 font-medium" id="inWordCount">0 / 1.000 palabras</span>
+          </div>
+        </div>
+        
+        <!-- Right Pane -->
+        <div class="flex-1 flex flex-col relative bg-zinc-50/70 dark:bg-zinc-950/40 md:border-l border-t md:border-t-0 border-zinc-200 dark:border-zinc-800 p-5 min-h-[360px]" id="paneOutputContainer">
+          <button id="btnCopy" class="absolute top-4 right-4 text-xs bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-300 px-3 py-1.5 rounded-lg shadow-sm hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors z-10 flex items-center gap-1.5 hidden">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <span id="copyLabel">Copiar</span>
+          </button>
+          
+          <div id="outputEmptyState" class="absolute inset-0 flex flex-col items-center justify-center text-center p-6 pointer-events-none transition-opacity duration-300">
+            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" class="text-zinc-300 dark:text-zinc-700 mb-4"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+            <p class="text-sm text-zinc-500 dark:text-zinc-500 font-medium">Tu texto humanizado aparecerá aquí en tiempo real</p>
+          </div>
+
+          <textarea id="outputText" class="w-full flex-1 bg-transparent text-zinc-800 dark:text-zinc-100 text-base leading-relaxed resize-none focus:outline-none relative z-0 hidden" readonly spellcheck="false"></textarea>
+          
+          <!-- AI Detector Output Box -->
+          <div id="detectorOutput" class="w-full flex-1 hidden flex-col relative z-0">
+            <!-- Injected dynamically by JS -->
+          </div>
+        </div>
+      </div>
+
+      <!-- Bottom CTA Action Bar -->
+      <div class="p-4 bg-white dark:bg-zinc-900 border-t border-zinc-100 dark:border-zinc-800/50 flex justify-center">
+        <button id="btnActionExecute" class="bg-emerald-600 hover:bg-emerald-500 active:scale-[0.99] text-white font-semibold px-8 py-3 rounded-xl shadow-sm shadow-emerald-600/20 transition-all flex items-center justify-center gap-2 text-sm w-full md:w-auto relative group">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" id="actionBtnIcon"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
+          <span id="btnActionText">Humanizar Texto</span>
+          <span class="opacity-60 text-[10px] ml-2 font-normal tracking-wide hidden md:inline border border-white/20 px-1.5 py-0.5 rounded">Ctrl + Enter</span>
+        </button>
+      </div>
+    </div>
+  </div>
 
 <!-- AUTH MODAL (Exact Parity with ai.trujillomingorance.com) -->
 <div class="modal-backdrop" id="authModal">

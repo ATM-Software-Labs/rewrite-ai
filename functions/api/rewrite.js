@@ -77,6 +77,7 @@ export async function onRequestPost(context) {
     const {
       text,
       mode = 'stealth',
+      stylePreset = 'natural',
       aggressiveness = 'extreme',
       language = 'auto',
       provider = 'groq',
@@ -99,7 +100,7 @@ export async function onRequestPost(context) {
 
     const systemPrompt = isEnglish
       ? buildSystemPromptEn(mode, styleGuide, calibration)
-      : buildSystemPromptEs(mode, styleGuide, calibration);
+      : buildSystemPromptEs(mode, styleGuide, calibration, stylePreset);
 
     let userPrompt = '';
     if (isEnglish) {
@@ -308,62 +309,20 @@ function buildSystemPromptEn(mode, styleGuide, calibration) {
     buildStyleBlock(styleGuide, calibration);
 }
 
-function buildSystemPromptEs(mode, styleGuide, calibration) {
-  let modeInstructions = '';
-  switch (mode) {
-    case 'corrector':
-      modeInstructions = '- FUNCIÓN: Corrector ortográfico, gramatical y de estilo profesional de alto nivel.\n' +
-        '- Corrige minuciosamente tildes, grafías, concordancias de género y número, puntuación y sintaxis.\n' +
-        '- Elimina redundancias, solecismos y anacolutos, optimizando la fluidez y coherencia del párrafo.\n' +
-        '- Mantén escrupulosamente el significado original, los datos, citas y nombres propios.\n' +
-        '- Respeta el 100% del formato Markdown del texto original.';
-      break;
-    case 'academic':
-      modeInstructions = '- Conserva el rigor analítico, citas, datos, nombres propios y conceptos técnicos intactos.\n' +
-        '- Varía drásticamente la estructura de las oraciones: combina afirmaciones concisas con oraciones subordinadas complejas.\n' +
-        '- Emplea un vocabulario académico orgánico, evitando clichés predecibles como "en conclusión", "es fundamental destacar" o "juega un papel crucial".\n' +
-        '- Equilibrio natural entre voz activa y pasiva reflexiva.';
-      break;
-    case 'casual':
-      modeInstructions = '- Estilo fluido, cercano, conversacional y espontáneo.\n' +
-        '- Pausas naturales, variedad rítmica y matices coloquiales orgánicos.\n' +
-        '- Cero rigidez corporativa o frases acartonadas.';
-      break;
-    case 'executive':
-      modeInstructions = '- Tono directo, conciso, orientado a la acción y a la toma de decisiones.\n' +
-        '- Elimina cualquier palabra de relleno, perífrasis o transición ornamental.\n' +
-        '- Oraciones directas al grano, claras y de alto impacto.';
-      break;
-    default:
-      modeInstructions = '- OBJETIVO SUPREMO: SCORE DE 99,9% HUMANO (0% de detección IA en Turnitin, ZeroGPT, GPTZero, CopyLeaks, Winston AI).\n' +
-        '- BURSTINESS EXTREMO: Varía radicalmente la longitud de las frases. Una frase corta y asertiva de 3 a 6 palabras. Luego una frase compuesta y explicativa de 20 a 28 palabras con varias ideas conectadas. Luego una frase moderada de 10 palabras. Los detectores buscan uniformidad; rómpela de raíz.\n' +
-        '- PERPLEJIDAD ELEVADA: Sustituye colocaciones estadísticas predecibles por alternativas léxicas naturales pero imprevistas matemáticamente.\n' +
-        '- ERRADICACIÓN TOTAL DE CLICHÉS DE IA: Queda estrictamente prohibido usar términos trillados como: sumergirse, el tapiz, testimonio, crucial, en conclusión, es fundamental destacar, cabe señalar, desempeña un papel, a fin de cuentas, por consiguiente, un sinfín de, no solo... sino también, vital, primordial, en este sentido, vale la pena señalar, un abanico de, en resumen, es de vital importancia, cobra especial relevancia, sentar las bases.\n' +
-        '- Preserva el 100% de los hechos, números, datos y significado original sin omitir nada.';
-      break;
-  }
+function buildSystemPromptEs(mode, styleGuide, calibration, stylePreset) {
+  let presetRule = "";
+  if (stylePreset === 'academic') presetRule = "\n- PRESET ACADÉMICO: Usa un tono formal, técnico y objetivo, ideal para papers o informes universitarios.";
+  else if (stylePreset === 'simple') presetRule = "\n- PRESET SIMPLIFICAR: Reduce la complejidad léxica, usa vocabulario accesible (Modo Fácil) para todos los públicos.";
+  else if (stylePreset === 'executive') presetRule = "\n- PRESET EJECUTIVO: Ve directo al grano, usa tono corporativo y prioriza la claridad y brevedad (Business).";
+  else presetRule = "\n- PRESET NATURAL: Mantén un tono coloquial, divulgativo y conversacional fluido.";
 
-  return 'Eres "Rewrite AI Core", el motor de humanización de texto y anti-detección 0% IA de Trujillo AI.\n' +
-    'Tu labor es transformar textos redactados por IA en prosa 99,9% HUMANA, auténtica e indistinguible de la escritura de un autor nativo experto.\n\n' +
-    'REQUISITO CRÍTICO 1: SOLO CAMBIA LAS PALABRAS (CORRESPONDENCIA 1:1):\n' +
-    '- NO resumas, NO omitas información y NO inventes datos.\n' +
-    '- Mantén una correspondencia estricta 1 a 1: cada párrafo, viñeta e idea original debe existir en el resultado reescrito.\n' +
-    '- Tu labor es exclusivamente sustituir la redacción robótica, las frases cliché y la cadencia uniforme de la IA por vocabulario y ritmo humano.\n\n' +
-    'REQUISITO CRÍTICO 2: CONSERVACIÓN ESTRICTA DEL FORMATO MARKDOWN:\n' +
-    '- NO FUSIONES NI CONVIERTAS CLAVES, ETIQUETAS, LISTAS O VIÑETAS EN UN PÁRRAFO CORRIDO CONTINUO.\n' +
-    '- Conserva cada encabezado (#, ##, ###), negrita (**), cursiva (*), lista (- o *), lista numerada (1., 2.), cita (>), tabla (| ... |) y separador (---).\n' +
-    '- NO MODIFIQUES LOS BLOQUES DE CÓDIGO (``` ... ```) NI EL CÓDIGO EN LÍNEA (`...`) — DÉJALOS VERBATIM.\n' +
-    '- Conserva todas las URLs y enlaces intactos.\n' +
-    '- En campos con etiquetas (ej: "Nombre:", "Descripción:"), mantén cada etiqueta en su posición y reescribe únicamente el texto explicativo.\n\n' +
-    'REQUISITO CRÍTICO 3: CONSERVACIÓN ESTRICTA DEL IDIOMA:\n' +
-    '- El texto de entrada está en español. Tu salida DEBE ser 100% y estrictamente en español.\n' +
-    '- NO traduzcas a inglés ni a ningún otro idioma bajo ninguna circunstancia.\n\n' +
-    'DIRECTRICES:\n' + modeInstructions + '\n\n' +
-    'REGLAS DE SALIDA:\n' +
-    '- Devuelve EXCLUSIVAMENTE el texto transformado.\n' +
-    '- NO agregues introducciones como "Aquí te presento el texto humanizado:", "Aquí está el resultado:", etc.\n' +
-    '- Comienza directamente con la primera línea del contenido reescrito.' +
-    buildStyleBlock(styleGuide, calibration);
+  return `Eres un redactor humano nativo con estilo orgánico, directo y variado. Tu objetivo es reescribir el texto original para que suene 100% natural, asimétrico y vivo, manteniendo íntegro el significado y los datos técnicos.
+
+REGLAS INQUEBRANTABLES:
+- Prohibido utilizar estructuras oracionales homogéneas: alterna oraciones cortas y directas con explicaciones compuestas.
+- Lista negra de muletillas de IA (PROHIBIDAS): 'fundamental', 'crucial', 'en resumen', 'en conclusión', 'un tapiz', 'a día de hoy', 'en el panorama actual', 'cabe destacar', 'no solo... sino también'.
+- Evita conclusiones formulaicas que empiecen por 'En definitiva' o resuman lo ya dicho.
+- Devuelve únicamente el texto final reescrito, sin saludos ni aclaraciones previas o posteriores.` + presetRule + buildStyleBlock(styleGuide, calibration);
 }
 
 async function callGroqWithLadder(prompt, systemPrompt, apiKey, requestedModel) {
@@ -382,6 +341,9 @@ async function callGroqWithLadder(prompt, systemPrompt, apiKey, requestedModel) 
           { role: 'user', content: prompt }
         ],
         temperature: 0.92,
+        top_p: 0.94,
+        presence_penalty: 0.45,
+        frequency_penalty: 0.35,
         max_tokens: 3500
       };
 
@@ -421,6 +383,9 @@ async function callGroqStream(prompt, systemPrompt, apiKey, requestedModel, orig
       { role: 'user', content: prompt }
     ],
     temperature: 0.92,
+    top_p: 0.94,
+    presence_penalty: 0.45,
+    frequency_penalty: 0.35,
     max_tokens: 3500,
     stream: true
   };

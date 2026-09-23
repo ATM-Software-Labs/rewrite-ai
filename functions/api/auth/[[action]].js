@@ -1,5 +1,5 @@
 /**
- * Trujillo AI — Auth Proxy for Rewrite AI (Cloudflare Pages Function)
+ * Trujillo AI - Auth Proxy for Rewrite AI (Cloudflare Pages Function)
  * Shares user accounts, sessions, and authentication with ai.trujillomingorance.com
  */
 
@@ -9,7 +9,10 @@ const CORS_HEADERS = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
   "Access-Control-Allow-Headers": "Content-Type, Authorization, Cookie",
-  "Access-Control-Allow-Credentials": "true"
+  "Access-Control-Allow-Credentials": "true",
+  "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
+  "Pragma": "no-cache",
+  "Expires": "0"
 };
 
 export async function onRequestOptions() {
@@ -64,7 +67,7 @@ export async function onRequest(context) {
       headers: responseHeaders
     });
   } catch (err) {
-    return new Response(JSON.stringify({ error: err.message || "Error en el servicio de autenticación" }), {
+    return new Response(JSON.stringify({ error: err.message || "Error en el servicio de autenticacin" }), {
       status: 500,
       headers: {
         ...CORS_HEADERS,
