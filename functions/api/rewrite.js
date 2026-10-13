@@ -597,7 +597,7 @@ function buildPrompts(mode, preset, isEnglish, text, styleGuide, calibration) {
       '1. No copies frases del original: cada frase debe tener otra estructura (cambia el orden, el sujeto o el verbo). La primera frase tiene que empezar distinto que el original.\n' +
       '2. Divide el resultado en párrafos de 2 a 4 frases separados por una línea en blanco.\n' +
       '3. Texto plano: sin **, #, *, viñetas, numeración ni ---. Las listas se cuentan como prosa.\n' +
-      '4. Mantén todas las cifras y nombres. No uses: paradoja, crucial, fundamental, cabe destacar, en resumen, en conclusión, en un mundo.\n' +
+      '4. Longitud parecida al original (como mucho un 20 % más, salvo en el resumen ejecutivo); no añadas relleno ni ideas nuevas. Mantén todas las cifras y nombres. No uses: paradoja, crucial, fundamental, cabe destacar, en resumen, en conclusión, en un mundo.\n' +
       '5. ' + (STYLES_ES[preset] || STYLES_ES.natural) + '\n\n<texto>\n' + text + '\n</texto>',
   };
 }
@@ -610,6 +610,7 @@ function stripMarkdown(t) {
     .replace(/^\s*[*\-+•]\s+/gm, '')
     .replace(/\*\*(.+?)\*\*/g, '$1').replace(/__(.+?)__/g, '$1')
     .replace(/(^|[^\w*])\*(?!\s)([^*\n]+?)\*(?!\w)/g, '$1$2')
+    .replace(/[ \t]+$/gm, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
 }
