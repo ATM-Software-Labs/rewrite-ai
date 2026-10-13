@@ -1,6 +1,6 @@
 /**
  * Cloudflare Pages Function: /api/rewrite
- * Secure streaming proxy — undetectable system prompt injection
+ * Proxy de streaming para la reescritura de textos
  * Groq LPU fallback ladder + Cloudflare Workers AI
  * Style.md calibration + sentence-level burstiness
  */
@@ -106,11 +106,11 @@ export async function onRequestPost(context) {
     if (isEnglish) {
       userPrompt = mode === 'corrector'
         ? "Professionally proofread and polish the following English text. PRESERVE EVERY MARKDOWN FORMATTING ELEMENT, HEADING, BULLET, KEY-VALUE LABEL, AND LINK IN PLACE. ONLY rewrite the words to fix errors and improve flow. Return ONLY the transformed English text:\n\n\"\"\"\n" + text + "\n\"\"\""
-        : "Rewrite the following English text so it scores 99.9% HUMAN and 0% AI on Turnitin, GPTZero, and all AI detectors. STRICTLY PRESERVE 100% of all Markdown formatting, headings, bullet lists, code blocks, tables, and links. ONLY CHANGE THE WORDS to vary cadence, purge AI clichés, and boost perplexity. Return ONLY the transformed English text:\n\n\"\"\"\n" + text + "\n\"\"\"";
+        : "Rewrite the following English text so it reads clearly and naturally. STRICTLY PRESERVE 100% of all Markdown formatting, headings, bullet lists, code blocks, tables, and links. ONLY CHANGE THE WORDS to vary rhythm and remove filler and clichés. Return ONLY the transformed English text:\n\n\"\"\"\n" + text + "\n\"\"\"";
     } else {
       userPrompt = mode === 'corrector'
         ? "Corrige y perfecciona profesionalmente el siguiente texto en español. CONSERVA CADA ELEMENTO DE FORMATO MARKDOWN, ENCABEZADO, VIÑETA, ETIQUETA CLAVE-VALOR Y ENLACE EN SU LUGAR. Reescribe ÚNICAMENTE las palabras para corregir ortografía, gramática y estilo. Devuelve SOLO el texto corregido en español:\n\n\"\"\"\n" + text + "\n\"\"\""
-        : "Reescribe el siguiente texto en español para que sea 99,9% HUMANO y obtenga 0% de detección IA en Turnitin, GPTZero y todos los detectores. CONSERVA ESTRICTAMENTE el 100% de todo el formato Markdown, encabezados, listas con viñetas, tablas, bloques de código y enlaces. SOLO CAMBIA LAS PALABRAS para aumentar la perplejidad, variar la longitud de oraciones y erradicar clichés de IA. Devuelve ÚNICAMENTE el texto humanizado en español:\n\n\"\"\"\n" + text + "\n\"\"\"";
+        : "Reescribe el siguiente texto en español para que se lea claro y natural. CONSERVA ESTRICTAMENTE el 100% de todo el formato Markdown, encabezados, listas con viñetas, tablas, bloques de código y enlaces. SOLO CAMBIA LAS PALABRAS para variar el ritmo y quitar muletillas y clichés. Devuelve ÚNICAMENTE el texto reescrito en español:\n\n\"\"\"\n" + text + "\n\"\"\"";
     }
 
     const effectiveGroqKey = apiKey || env.GROQ_API_KEY || '';
@@ -278,20 +278,20 @@ function buildSystemPromptEn(mode, styleGuide, calibration) {
         '- Straight to the point with authoritative clarity.';
       break;
     default:
-      modeInstructions = '- SUPREME GOAL: 99.9% HUMAN SCORE (0% AI detection) on Turnitin, GPTZero, ZeroGPT, CopyLeaks, and Winston AI.\n' +
-        '- EXTREME BURSTINESS: Drastically vary sentence length. A 3-to-6 word punchy sentence. Then an intricate 22-to-28 word multi-clause sentence. Then a moderate 10-word sentence. Shatter uniform AI rhythm.\n' +
-        '- HIGH PERPLEXITY: Replace predictable statistical collocations with natural, authentic, rich human vocabulary.\n' +
-        '- STRICTLY PURGE AI CLICHES: Never use: delve, tapestry, testament, beacon, crucial, paramount, realm, furthermore, moreover, in conclusion, underscores, pivotal, seamless, fostering, holistic, interplay, cornerstone.\n' +
+      modeInstructions = '- GOAL: clear, natural prose that keeps the author\'s meaning.\n' +
+        '- RHYTHM: Vary sentence length. A 3-to-6 word punchy sentence. Then an intricate 22-to-28 word multi-clause sentence. Then a moderate 10-word sentence. Avoid a monotonous rhythm.\n' +
+        '- VOCABULARY: Prefer plain, precise words over stock phrases.\n' +
+        '- AVOID CLICHES: Never use: delve, tapestry, testament, beacon, crucial, paramount, realm, furthermore, moreover, in conclusion, underscores, pivotal, seamless, fostering, holistic, interplay, cornerstone.\n' +
         '- Preserve 100% of facts, names, figures, dates, links, citations, and semantic meaning.';
       break;
   }
 
-  return 'You are "Rewrite AI Core", the world\'s most advanced text humanization and anti-AI detection engine, part of the Trujillo AI ecosystem.\n' +
-    'Your mission is to transform AI-written text into 99.9% AUTHENTIC HUMAN PROSE that completely bypasses every AI detector.\n\n' +
+  return 'You are "Rewrite AI Core", a careful text editor that rewrites drafts so they read clearly and naturally.\n' +
+    'Improve wording and flow without changing the meaning.\n\n' +
     'CRITICAL REQUIREMENT 1: ONLY REWRITE THE WORDS (1:1 CORRESPONDENCE):\n' +
     '- DO NOT summarize, omit content, or invent new facts.\n' +
     '- Maintain a strict 1-to-1 correspondence with the source: every paragraph, bullet point, and thought in the original must exist in the rewritten output.\n' +
-    '- Your task is strictly surgical rewording and cadence variation to eliminate AI statistical signatures.\n\n' +
+    '- Your task is strictly surgical rewording and cadence variation to improve readability.\n\n' +
     'CRITICAL REQUIREMENT 2: STRICT MARKDOWN & STRUCTURAL FIDELITY:\n' +
     '- DO NOT FLATTEN OR MERGE KEY-VALUE PAIRS, BULLETS, HEADINGS, OR SECTIONS INTO CONTINUOUS NARRATIVE PROSE.\n' +
     '- Retain every Markdown heading (#, ##, ###), bold (**), italic (*), list item (- or *), blockquote (>), table (| ... |), and horizontal rule (---).\n' +
