@@ -98,20 +98,7 @@ export async function onRequestPost(context) {
     const detectedLang = language === 'auto' ? detectTextLanguage(text) : language;
     const isEnglish = detectedLang === 'en';
 
-    const systemPrompt = isEnglish
-      ? buildSystemPromptEn(mode, styleGuide, calibration)
-      : buildSystemPromptEs(mode, styleGuide, calibration, stylePreset);
-
-    let userPrompt = '';
-    if (isEnglish) {
-      userPrompt = mode === 'corrector'
-        ? "Professionally proofread and polish the following English text. PRESERVE EVERY MARKDOWN FORMATTING ELEMENT, HEADING, BULLET, KEY-VALUE LABEL, AND LINK IN PLACE. ONLY rewrite the words to fix errors and improve flow. Return ONLY the transformed English text:\n\n\"\"\"\n" + text + "\n\"\"\""
-        : "Rewrite the following English text so it reads clearly and naturally. STRICTLY PRESERVE 100% of all Markdown formatting, headings, bullet lists, code blocks, tables, and links. ONLY CHANGE THE WORDS to vary rhythm and remove filler and clichés. Return ONLY the transformed English text:\n\n\"\"\"\n" + text + "\n\"\"\"";
-    } else {
-      userPrompt = mode === 'corrector'
-        ? "Corrige y perfecciona profesionalmente el siguiente texto en español. CONSERVA CADA ELEMENTO DE FORMATO MARKDOWN, ENCABEZADO, VIÑETA, ETIQUETA CLAVE-VALOR Y ENLACE EN SU LUGAR. Reescribe ÚNICAMENTE las palabras para corregir ortografía, gramática y estilo. Devuelve SOLO el texto corregido en español:\n\n\"\"\"\n" + text + "\n\"\"\""
-        : "Reescribe el siguiente texto en español para que se lea claro y natural. CONSERVA ESTRICTAMENTE el 100% de todo el formato Markdown, encabezados, listas con viñetas, tablas, bloques de código y enlaces. SOLO CAMBIA LAS PALABRAS para variar el ritmo y quitar muletillas y clichés. Devuelve ÚNICAMENTE el texto reescrito en español:\n\n\"\"\"\n" + text + "\n\"\"\"";
-    }
+    const { systemPrompt, userPrompt } = buildPrompts(mode, stylePreset, isEnglish, text, styleGuide, calibration);
 
     const effectiveGroqKey = apiKey || env.GROQ_API_KEY || '';
 
@@ -148,7 +135,8 @@ export async function onRequestPost(context) {
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt }
           ],
-          temperature: aggressiveness === 'extreme' ? 0.95 : 0.85,
+          temperature: mode === 'corrector' ? 0.3 : 0.85,
+          top_p: 0.95,
           max_tokens: 3500
         });
       } catch (aiErr) {
@@ -157,7 +145,7 @@ export async function onRequestPost(context) {
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt }
           ],
-          temperature: 0.90,
+          temperature: mode === 'corrector' ? 0.3 : 0.85,
           max_tokens: 3500
         });
       }
@@ -172,7 +160,7 @@ export async function onRequestPost(context) {
       usedProvider = 'Rule-Based Engine (Local)';
     }
 
-    humanizedText = cleanModelOutput(humanizedText);
+    humanizedText = stripMarkdown(cleanModelOutput(humanizedText));
 
     const originalMetrics = calculateMetrics(text);
     const humanizedMetrics = calculateMetrics(humanizedText);
@@ -186,11 +174,7 @@ export async function onRequestPost(context) {
       language: detectedLang,
       metrics: {
         original: originalMetrics,
-        humanized: humanizedMetrics,
-        aiScoreEstimate: {
-          originalAiProb: Math.min(99, Math.max(75, Math.round(100 - originalMetrics.burstiness * 1.1))),
-          humanizedAiProb: Math.max(0, Math.min(1, Math.round(1 - (humanizedMetrics.burstiness / 60))))
-        }
+        humanized: humanizedMetrics
       }
     }), {
       status: 200,
@@ -340,7 +324,7 @@ async function callGroqWithLadder(prompt, systemPrompt, apiKey, requestedModel) 
           { role: 'system', content: systemPrompt },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.92,
+        temperature: 0.85,
         top_p: 0.94,
         presence_penalty: 0.45,
         frequency_penalty: 0.35,
@@ -382,7 +366,7 @@ async function callGroqStream(prompt, systemPrompt, apiKey, requestedModel, orig
       { role: 'system', content: systemPrompt },
       { role: 'user', content: prompt }
     ],
-    temperature: 0.92,
+    temperature: 0.85,
     top_p: 0.94,
     presence_penalty: 0.45,
     frequency_penalty: 0.35,
@@ -419,7 +403,7 @@ async function callGroqStream(prompt, systemPrompt, apiKey, requestedModel, orig
         const dataStr = trimmed.slice(5).trim();
 
         if (dataStr === '[DONE]') {
-          const cleaned = cleanModelOutput(fullAccumulated);
+          const cleaned = stripMarkdown(cleanModelOutput(fullAccumulated));
           const origM = calculateMetrics(originalText);
           const humM = calculateMetrics(cleaned);
           const donePayload = JSON.stringify({
@@ -475,7 +459,7 @@ async function callOpenAI(prompt, systemPrompt, apiKey, model) {
         { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt }
       ],
-      temperature: 0.92,
+      temperature: 0.85,
       max_tokens: 3500
     })
   });
@@ -562,4 +546,65 @@ function calculateMetrics(text) {
     burstiness,
     clichéCount
   };
+}
+
+
+/* ---------- Instrucciones de reescritura (sin objetivos de evasión de detectores) ---------- */
+const STYLES_ES = {
+  natural: 'Tono conversacional pero profesional, como un buen artículo divulgativo escrito por una persona: cercano, claro, con alguna frase corta que remate una idea.',
+  academic: 'Registro académico: preciso, impersonal cuando convenga, con conectores formales (no obstante, por tanto, en la medida en que) y frases más elaboradas, sin jerga vacía.',
+  simple: 'Lenguaje sencillo: frases cortas, palabras cotidianas, explica cualquier término técnico en pocas palabras. Que lo entienda alguien de 14 años.',
+  executive: 'Resumen ejecutivo: condensa a lo esencial en 2-4 párrafos breves. Empieza por la conclusión, luego los datos clave y termina con la implicación práctica. Puedes reducir la longitud a la mitad.',
+};
+const STYLES_EN = {
+  natural: 'Conversational but professional, like a good feature article written by a person: warm, clear, with the occasional short sentence that lands a point.',
+  academic: 'Academic register: precise, formal connectors (however, therefore, insofar as), more elaborate sentences, no empty jargon.',
+  simple: 'Plain language: short sentences, everyday words, explain any technical term briefly. A 14-year-old should understand it.',
+  executive: 'Executive summary: condense to the essentials in 2-4 short paragraphs. Lead with the conclusion, then key data, then the practical implication. You may halve the length.',
+};
+
+function buildPrompts(mode, preset, isEnglish, text, styleGuide, calibration) {
+  const extra = typeof buildStyleBlock === 'function' ? buildStyleBlock(styleGuide, calibration) : '';
+  if (isEnglish) {
+    if (mode === 'corrector') return {
+      systemPrompt: 'You are a meticulous copy editor. Fix spelling, grammar, punctuation and awkward phrasing. Keep the author\'s wording, order and structure (paragraphs, headings as their own lines, list items as their own lines). Remove Markdown symbols (**, __, #, *, -, ---, >) but keep the line structure; a list item becomes a line starting with a dash-free sentence. Keep facts, numbers and names exactly. Output only the corrected text, no preface.' + extra,
+      userPrompt: 'Correct this text:\n\n' + text,
+    };
+    return {
+      systemPrompt: 'You are an experienced human editor who rewrites drafts into natural, flowing prose.\n' +
+        'Rewrite substantially, do not just swap synonyms: restructure sentences, merge short ones and split long ones, vary sentence length and rhythm, reorder ideas within a paragraph when it reads better, and use natural connectors.\n' +
+        'Output clean plain text in paragraphs. No Markdown at all: turn headings into a natural opening sentence of the paragraph, turn bullet lists into connected prose, drop bold/italics and horizontal rules.\n' +
+        'Keep every fact, figure, percentage, name and the overall meaning. Write in English. Do not add new claims.\n' +
+        'Avoid stock phrases: "in conclusion", "it is worth noting", "paradox", "crucial", "in today\'s world", "delve", "landscape", "tapestry", "moreover", "furthermore", "not only... but also". Avoid parallel triplets and list-like cadence.\n' +
+        'Style: ' + (STYLES_EN[preset] || STYLES_EN.natural) + '\n' +
+        'Return only the rewritten text, no title, no preface, no explanation.' + extra,
+      userPrompt: 'Rewrite this text:\n\n' + text,
+    };
+  }
+  if (mode === 'corrector') return {
+    systemPrompt: 'Eres un corrector de estilo meticuloso. Corrige ortografía, gramática, puntuación, concordancias y frases torpes. Respeta las palabras, el orden y la estructura del autor (párrafos, títulos en su propia línea, cada elemento de lista en su propia línea). Elimina los símbolos Markdown (**, __, #, *, -, ---, >) pero conserva los saltos de línea. Mantén datos, cifras y nombres exactos. Devuelve solo el texto corregido, sin introducciones.' + extra,
+    userPrompt: 'Corrige este texto:\n\n' + text,
+  };
+  return {
+    systemPrompt: 'Eres un editor con oficio que reescribe borradores para convertirlos en prosa natural y fluida, como la escribiría una persona.\n' +
+      'Reescribe a fondo, no te limites a cambiar sinónimos: reestructura las frases, une las cortas y divide las largas, alterna frases breves y largas, reordena ideas dentro del párrafo si se lee mejor y usa conectores naturales (y es que, eso sí, al final, por eso, mientras tanto, de hecho).\n' +
+      'Devuelve texto plano limpio en párrafos. Nada de Markdown: convierte cada título en una frase de apertura natural del párrafo, convierte las listas en prosa enlazada y elimina negritas, cursivas y separadores (**, ###, *, ---).\n' +
+      'Conserva todos los datos, cifras, porcentajes, nombres y el sentido del original. Escribe en español. No añadas afirmaciones nuevas.\n' +
+      'Evita muletillas y clichés: "en resumen", "en conclusión", "cabe destacar", "es importante señalar", "paradoja", "crucial", "fundamental", "en un mundo", "en el panorama actual", "a día de hoy", "no solo... sino también", "un tapiz". Evita enumeraciones de tres en tres y el ritmo de lista.\n' +
+      'Estilo: ' + (STYLES_ES[preset] || STYLES_ES.natural) + '\n' +
+      'Devuelve únicamente el texto reescrito, sin título, sin introducción y sin explicaciones.' + extra,
+    userPrompt: 'Reescribe este texto:\n\n' + text,
+  };
+}
+
+function stripMarkdown(t) {
+  return String(t || '')
+    .replace(/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/gm, '')
+    .replace(/^\s{0,3}#{1,6}\s+/gm, '')
+    .replace(/^\s*>\s?/gm, '')
+    .replace(/^\s*[*\-+•]\s+/gm, '')
+    .replace(/\*\*(.+?)\*\*/g, '$1').replace(/__(.+?)__/g, '$1')
+    .replace(/(^|[^\w*])\*(?!\s)([^*\n]+?)\*(?!\w)/g, '$1$2')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
 }
