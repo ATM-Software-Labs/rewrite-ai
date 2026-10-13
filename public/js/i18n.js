@@ -445,7 +445,7 @@ function apply(){var T=window.rwT;document.documentElement.lang=lang;
  document.dispatchEvent(new CustomEvent('rw:lang',{detail:lang}));}
 window.rwSetLang=function(l){if(!D[l])return;lang=l;try{localStorage.setItem('rw_lang',l);}catch(e){}apply();};
 function menu(){var b=document.getElementById('lang-btn'),m=document.getElementById('lang-menu');if(!b||!m)return;
- m.innerHTML=Object.keys(NAMES).map(function(c){return '<button type="button" role="menuitemradio" data-lang="'+c+'"><span class="lang-code-sm">'+c.toUpperCase()+'</span>'+NAMES[c]+'</button>';}).join('');
+ m.innerHTML=Object.keys(NAMES).map(function(c){return '<button type="button" role="menuitemradio" data-lang="'+c+'"><span class="lang-flag">'+(window.atmFlag?window.atmFlag(c):c.toUpperCase())+'</span>'+NAMES[c]+'</button>';}).join('');
  b.addEventListener('click',function(e){e.stopPropagation();m.hidden=!m.hidden;b.setAttribute('aria-expanded',String(!m.hidden));});
  m.addEventListener('click',function(e){var x=e.target.closest('[data-lang]');if(x){window.rwSetLang(x.getAttribute('data-lang'));m.hidden=true;b.setAttribute('aria-expanded','false');}});
  document.addEventListener('click',function(e){if(!m.hidden&&!m.contains(e.target)&&e.target!==b){m.hidden=true;b.setAttribute('aria-expanded','false');}});
