@@ -2,6 +2,7 @@
 (function(){'use strict';
 var D={
 "es": {
+"t_adjust": "Ajustando la longitud…",
 "title": "Rewrite · Reescritura de textos · ATM Software Labs",
 "desc": "Reescribe, corrige y traduce textos para que se lean más claros y naturales.",
 "home_aria": "Rewrite, inicio",
@@ -63,6 +64,7 @@ var D={
 "nf_btn": "Volver a Rewrite"
 },
 "en": {
+"t_adjust": "Adjusting the length…",
 "title": "Rewrite · Text rewriting · ATM Software Labs",
 "desc": "Rewrite, proofread and translate texts so they read clearer and more naturally.",
 "home_aria": "Rewrite, home",
@@ -124,6 +126,7 @@ var D={
 "nf_btn": "Back to Rewrite"
 },
 "ca": {
+"t_adjust": "Ajustant la llargada…",
 "title": "Rewrite · Reescriptura de textos · ATM Software Labs",
 "desc": "Reescriu, corregeix i tradueix textos perquè es llegeixin més clars i naturals.",
 "home_aria": "Rewrite, inici",
@@ -185,6 +188,7 @@ var D={
 "nf_btn": "Tornar a Rewrite"
 },
 "fr": {
+"t_adjust": "Ajustement de la longueur…",
 "title": "Rewrite · Réécriture de textes · ATM Software Labs",
 "desc": "Réécrivez, corrigez et traduisez vos textes pour qu'ils soient plus clairs et naturels.",
 "home_aria": "Rewrite, accueil",
@@ -246,6 +250,7 @@ var D={
 "nf_btn": "Retour à Rewrite"
 },
 "de": {
+"t_adjust": "Länge wird angepasst…",
 "title": "Rewrite · Texte umschreiben · ATM Software Labs",
 "desc": "Texte umschreiben, korrigieren und übersetzen, damit sie klarer und natürlicher klingen.",
 "home_aria": "Rewrite, Startseite",
@@ -265,7 +270,7 @@ var D={
 "s_natural": "Natürlich",
 "s_academic": "Akademisch",
 "s_simple": "Einfach",
-"s_exec": "Management-Summary",
+"s_exec": "Kurzfassung",
 "input_label": "Originaltext",
 "ph": "Text hier einfügen oder eingeben…",
 "empty": "Das Ergebnis erscheint hier.",
@@ -287,7 +292,7 @@ var D={
 "auth_sub": "Nutze dein trujillomingorance.com-Konto.",
 "auth_x": "Weiter mit X",
 "auth_g": "Weiter mit Google",
-"auth_fine": "Rewrite funktioniert auch ohne Konto. Die Anmeldung zeigt nur deinen Namen und hält dich auf allen trujillomingorance.com-Seiten angemeldet.",
+"auth_fine": "Du kannst Rewrite auch ohne Konto nutzen. Die Anmeldung zeigt nur deinen Namen und hält dich auf allen trujillomingorance.com-Seiten angemeldet.",
 "t_logout": "Abgemeldet",
 "t_paste": "Mit Strg + V einfügen",
 "t_copied": "Kopiert",
@@ -307,6 +312,7 @@ var D={
 "nf_btn": "Zurück zu Rewrite"
 },
 "it": {
+"t_adjust": "Regolazione della lunghezza…",
 "title": "Rewrite · Riscrittura di testi · ATM Software Labs",
 "desc": "Riscrivi, correggi e traduci testi perché risultino più chiari e naturali.",
 "home_aria": "Rewrite, home",
@@ -326,7 +332,7 @@ var D={
 "s_natural": "Naturale",
 "s_academic": "Accademico",
 "s_simple": "Semplice",
-"s_exec": "Sintesi esecutiva",
+"s_exec": "Sintesi",
 "input_label": "Testo originale",
 "ph": "Incolla o scrivi qui il tuo testo…",
 "empty": "Il risultato apparirà qui.",
@@ -368,6 +374,7 @@ var D={
 "nf_btn": "Torna a Rewrite"
 },
 "pt": {
+"t_adjust": "A ajustar o comprimento…",
 "title": "Rewrite · Reescrita de textos · ATM Software Labs",
 "desc": "Reescreva, corrija e traduza textos para que fiquem mais claros e naturais.",
 "home_aria": "Rewrite, início",

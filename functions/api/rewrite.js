@@ -114,11 +114,19 @@ export async function onRequestPost(context) {
     // --- STREAMING MODE (SSE) ---
     if (stream && env.AI && !(provider === 'groq' && (apiKey || env.GROQ_API_KEY))) {
       try {
-        const aiStream = await env.AI.run(cfModel, {
-          messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
-          temperature, top_p: 0.95, max_tokens: maxTokens, stream: true
-        });
-        return new Response(workersAiToSse(aiStream, cfModel), {
+        const msgs = [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }];
+        const aiStream = await env.AI.run(cfModel, { messages: msgs, temperature, top_p: 0.95, max_tokens: maxTokens, stream: true });
+        // Reescribir: si sale demasiado corto (<85 % de palabras), se regenera una vez con una instrucción más firme
+        const inWords = text.replace(/[*#>_`-]+/g, ' ').trim().split(/\s+/).filter(Boolean).length;
+        const lengthCheck = mode === 'stealth' && stylePreset !== 'executive' && inWords >= 40;
+        const retry = lengthCheck ? async (got) => {
+          const lo = Math.round(inWords * 0.9), hi = Math.round(inWords * 1.1);
+          const fix = isEnglish
+            ? 'Your version has ' + got + ' words: too short, you left ideas out. Rewrite the ORIGINAL text again with between ' + lo + ' and ' + hi + ' words, covering every idea, example and figure in order. Same rules as before. Return only the text.'
+            : 'Tu versión tiene ' + got + ' palabras: es demasiado corta y has omitido ideas. Vuelve a reescribir el texto ORIGINAL con entre ' + lo + ' y ' + hi + ' palabras, recorriendo en orden cada idea, ejemplo y dato. Mismas reglas que antes. Devuelve solo el texto.';
+          return env.AI.run(cfModel, { messages: msgs.concat([{ role: 'user', content: fix }]), temperature: 0.7, top_p: 0.95, max_tokens: Math.min(3500, Math.ceil(inWords * 2.6) + 60), stream: true });
+        } : null;
+        return new Response(workersAiToSse(aiStream, cfModel, retry ? { minWords: Math.round(inWords * 0.85), retry } : null), {
           headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no', 'Access-Control-Allow-Origin': '*' }
         });
       } catch (e) {
@@ -648,13 +656,18 @@ function buildTranslatePrompts(text, target) {
   };
 }
 
-// Convierte el stream SSE de Workers AI ({"response":"..."}) en el formato de la app ({"chunk":"..."})
-function workersAiToSse(aiStream, model) {
-  const enc = new TextEncoder(), dec = new TextDecoder();
-  let buf = '';
-  return aiStream.pipeThrough(new TransformStream({
-    transform(bytes, ctl) {
-      buf += dec.decode(bytes, { stream: true });
+// Convierte el stream SSE de Workers AI ({"response":"..."}) en el formato de la app ({"chunk":"..."}).
+// Con opts.retry: al terminar, si el texto tiene menos de opts.minWords palabras, envía {reset:true} y emite un segundo intento.
+function workersAiToSse(aiStream, model, opts) {
+  const enc = new TextEncoder();
+  const send = (ctl, obj) => ctl.enqueue(enc.encode('data: ' + JSON.stringify(obj) + '\n\n'));
+  async function pump(stream, ctl) {
+    const reader = stream.getReader(), dec = new TextDecoder();
+    let buf = '', acc = '';
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
       const lines = buf.split('\n'); buf = lines.pop();
       for (const raw of lines) {
         const l = raw.trim();
@@ -664,10 +677,28 @@ function workersAiToSse(aiStream, model) {
         try {
           const j = JSON.parse(d);
           const piece = typeof j.response === 'string' ? j.response : '';
-          if (piece) ctl.enqueue(enc.encode('data: ' + JSON.stringify({ chunk: piece }) + '\n\n'));
+          if (piece) { acc += piece; send(ctl, { chunk: piece }); }
         } catch (_) {}
       }
-    },
-    flush(ctl) { ctl.enqueue(enc.encode('data: ' + JSON.stringify({ done: true, model }) + '\n\n')); }
-  }));
+    }
+    return acc;
+  }
+  return new ReadableStream({
+    async start(ctl) {
+      try {
+        const first = await pump(aiStream, ctl);
+        const words = first.trim().split(/\s+/).filter(Boolean).length;
+        let attempts = 1;
+        if (opts && opts.retry && words < opts.minWords) {
+          send(ctl, { reset: true, reason: 'length', words });
+          await pump(await opts.retry(words), ctl);
+          attempts = 2;
+        }
+        send(ctl, { done: true, model, attempts });
+      } catch (e) {
+        send(ctl, { error: 'stream' });
+      }
+      ctl.close();
+    }
+  });
 }
