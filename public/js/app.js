@@ -77,6 +77,10 @@
 
   /* Espacio de trabajo */
   var mode = 'stealth', running = false;
+  var LABEL = { stealth: 'Reescribir texto', corrector: 'Corregir texto', translate: 'Traducir texto' };
+  var tl = store('rw_target'); if (tl) $('targetLang').value = tl;
+  $('targetLang').addEventListener('change', function () { store('rw_target', this.value); });
+  setTimeout(function () { var m = store('rw_mode'); var b = m && document.querySelector('.seg-btn[data-mode="' + m + '"]'); if (b) b.click(); }, 0);
   var input = $('inputText'), out = $('outputText');
   function words(t) { t = t.trim(); return t ? t.split(/\s+/).length : 0; }
   function counts() {
@@ -90,15 +94,23 @@
     b.addEventListener('click', function () {
       mode = b.dataset.mode;
       document.querySelectorAll('.seg-btn').forEach(function (x) { var on = x === b; x.classList.toggle('is-active', on); x.setAttribute('aria-selected', String(on)); });
-      $('btnRunText').textContent = mode === 'corrector' ? 'Corregir texto' : 'Reescribir texto';
-      $('stylePreset').disabled = mode === 'corrector';
+      $('btnRunText').textContent = LABEL[mode];
+      $('stylePreset').hidden = mode !== 'stealth';
+      $('langPair').hidden = mode !== 'translate';
+      store('rw_mode', mode);
     });
   });
+  function stripMd(t) {
+    return String(t || '').replace(/<\/?(texto|text)>/gi, '')
+      .replace(/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/gm, '').replace(/^\s{0,3}#{1,6}\s+/gm, '').replace(/^\s*>\s?/gm, '')
+      .replace(/^\s*[*\-+•]\s+/gm, '').replace(/\*\*/g, '').replace(/__/g, '')
+      .replace(/[ \t]+$/gm, '').replace(/\n{3,}/g, '\n\n').replace(/^\s+/, '');
+  }
   function showOut(text, streaming) {
     $('outputEmpty').hidden = true; out.hidden = false; $('btnCopy').hidden = streaming;
-    out.textContent = text; out.classList.toggle('cursor', !!streaming); counts();
+    out.textContent = stripMd(text); out.classList.toggle('cursor', !!streaming); counts();
   }
-  function resetOut() { out.textContent = ''; out.hidden = true; $('outputEmpty').hidden = false; $('btnCopy').hidden = true; counts(); }
+  function resetOut() { $('stats').hidden = true; out.textContent = ''; out.hidden = true; $('outputEmpty').hidden = false; $('btnCopy').hidden = true; counts(); }
   $('btnClear').addEventListener('click', function () { input.value = ''; store('rw_draft', null); resetOut(); input.focus(); });
   $('btnPaste').addEventListener('click', function () {
     if (!navigator.clipboard || !navigator.clipboard.readText) { toast('Usa Ctrl + V para pegar'); return; }
@@ -111,17 +123,45 @@
   document.addEventListener('keydown', function (e) { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') run(); });
   $('btnRun').addEventListener('click', run);
 
+  /* Cambios en el estilo: métricas locales y verificables */
+  var CLICHES = ['en resumen', 'en conclusión', 'cabe destacar', 'es importante señalar', 'es importante destacar', 'paradoja', 'crucial', 'fundamental', 'en un mundo', 'en el panorama actual', 'a día de hoy', 'no solo', 'sin lugar a dudas', 'un tapiz', 'en definitiva', 'juega un papel', 'in conclusion', 'it is worth noting', 'crucial', 'delve', 'tapestry', 'landscape', 'moreover', 'furthermore', 'in today\'s world', 'paradox'];
+  function sentenceStats(t) {
+    var plain = stripMd(t).replace(/\n+/g, ' ');
+    var sents = plain.split(/(?<=[.!?…])\s+/).map(function (x) { return x.trim(); }).filter(function (x) { return x.split(/\s+/).length > 1; });
+    var lens = sents.map(function (x) { return x.split(/\s+/).length; });
+    var n = lens.length || 1, mean = lens.reduce(function (a, b) { return a + b; }, 0) / n;
+    var sd = Math.sqrt(lens.reduce(function (a, b) { return a + Math.pow(b - mean, 2); }, 0) / n);
+    return { sd: sd, mean: mean, n: lens.length };
+  }
+  function countCliches(t) {
+    var low = ' ' + t.toLowerCase() + ' ', c = 0;
+    CLICHES.forEach(function (k) { var i = 0; while ((i = low.indexOf(k, i)) !== -1) { c++; i += k.length; } });
+    return c;
+  }
+  function renderStats(before, after) {
+    var a = sentenceStats(before), b = sentenceStats(after);
+    var ca = countCliches(before), cb = countCliches(after);
+    var wa = words(stripMd(before)), wb = words(after);
+    function f(x) { return x.toFixed(1).replace('.', ','); }
+    $('statsGrid').innerHTML =
+      '<div class="stat"><div class="stat-label">Variedad en la longitud de las frases (desv. típica, palabras)</div><div class="stat-value">' + f(a.sd) + ' → ' + f(b.sd) + '</div></div>' +
+      '<div class="stat"><div class="stat-label">Muletillas y clichés habituales</div><div class="stat-value">' + ca + ' → ' + cb + ' <small>(' + Math.max(0, ca - cb) + ' eliminados)</small></div></div>' +
+      '<div class="stat"><div class="stat-label">Palabras</div><div class="stat-value">' + wa + ' → ' + wb + ' <small>(' + b.n + ' frases)</small></div></div>';
+    $('stats').hidden = false;
+  }
+
   async function run() {
     if (running) return;
     var text = input.value.trim();
     if (text.length < 5) { toast('Escribe o pega un texto primero'); input.focus(); return; }
     running = true; var btn = $('btnRun'); btn.disabled = true; $('btnRunText').textContent = 'Procesando…';
-    showOut('', true);
-    var acc = '';
+    showOut('', true); $('stats').hidden = true;
+    var acc = '', t0 = performance.now(), tFirst = 0;
+    window.__rwTiming = null;
     try {
       var res = await fetch('/api/rewrite', {
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream, application/json' },
-        body: JSON.stringify({ text: text, mode: mode, stylePreset: $('stylePreset').value, language: 'auto', stream: true })
+        body: JSON.stringify({ text: text, mode: mode, stylePreset: $('stylePreset').value, targetLang: $('targetLang').value, language: 'auto', stream: true })
       });
       if (!res.ok) { var err = await res.json().catch(function () { return {}; }); throw new Error(err.error || ('Error del servidor (' + res.status + ')')); }
       var ct = res.headers.get('content-type') || '';
@@ -134,18 +174,21 @@
           for (var i = 0; i < lines.length; i++) {
             var l = lines[i].trim(); if (l.indexOf('data:') !== 0) continue;
             var d = l.slice(5).trim(); if (d === '[DONE]') continue;
-            try { var p = JSON.parse(d); if (p.chunk) { acc += p.chunk; showOut(acc, true); } if (p.done && p.text) acc = p.text; } catch (pe) {}
+            try { var p = JSON.parse(d); if (p.chunk) { if (!tFirst) tFirst = performance.now(); acc += p.chunk; showOut(acc, true); } if (p.done && p.text) acc = p.text; } catch (pe) {}
           }
         }
       } else {
         var data = await res.json(); acc = data.humanized || data.text || '';
       }
       if (!acc.trim()) throw new Error('El modelo no devolvió texto. Inténtalo de nuevo.');
+      if (!tFirst) tFirst = performance.now();
       showOut(acc.trim(), false);
+      window.__rwTiming = { ttft: Math.round(tFirst - t0), total: Math.round(performance.now() - t0) };
+      if (mode === 'stealth') renderStats(text, out.textContent);
     } catch (e) {
       resetOut(); toast(e.message || 'No se pudo procesar el texto');
     } finally {
-      running = false; btn.disabled = false; $('btnRunText').textContent = mode === 'corrector' ? 'Corregir texto' : 'Reescribir texto';
+      running = false; btn.disabled = false; $('btnRunText').textContent = LABEL[mode];
     }
   }
 })();

@@ -4,23 +4,23 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Rewrite · Reescritura de textos · ATM Software Labs</title>
-  <meta name="description" content="Reescribe y corrige textos para que se lean más claros y naturales. Conserva el formato Markdown.">
+  <meta name="description" content="Reescribe, corrige y traduce textos para que se lean más claros y naturales. Conserva el formato Markdown.">
   <meta name="author" content="Alberto Trujillo Mingorance">
   <meta name="color-scheme" content="light dark">
   <meta name="theme-color" content="#FAFAFA" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#09090B" media="(prefers-color-scheme: dark)">
   <script>(function(){try{var t=localStorage.getItem('ta_theme');if(t!=='light'&&t!=='dark')t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
-  <link rel="icon" href="/favicon.ico?v=202610132045" sizes="any">
-  <link rel="icon" type="image/png" href="/favicon-32.png?v=202610132045">
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=202610132045">
+  <link rel="icon" href="/favicon.ico?v=202610132110" sizes="any">
+  <link rel="icon" type="image/png" href="/favicon-32.png?v=202610132110">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=202610132110">
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/css/app.css?v=202610132045">
+  <link rel="stylesheet" href="/css/app.css?v=202610132110">
 </head>
 <body>
   <header class="topbar">
     <div class="topbar-inner">
       <a href="/" class="brand" aria-label="Rewrite, inicio">
-        <img src="/img/atm-logo.png?v=202610132045" alt="" width="28" height="28" class="brand-logo">
+        <img src="/img/atm-logo.png?v=202610132110" alt="" width="28" height="28" class="brand-logo">
         <span>REWRITE</span>
       </a>
       <div class="topbar-actions">
@@ -36,7 +36,7 @@
   <main class="wrap">
     <section class="hero">
       <p class="kicker">Reescritura de textos</p>
-      <h1>Reescribe y corrige tus textos</h1>
+      <h1>Reescribe, corrige y traduce tus textos</h1>
       <p class="lede">Pega un borrador y obtén una versión más clara y natural. Se conservan los datos, los enlaces y el formato Markdown.</p>
     </section>
 
@@ -45,8 +45,18 @@
         <div class="seg" role="tablist" aria-label="Modo">
           <button type="button" class="seg-btn is-active" data-mode="stealth" role="tab" aria-selected="true">Reescribir</button>
           <button type="button" class="seg-btn" data-mode="corrector" role="tab" aria-selected="false">Corregir</button>
+          <button type="button" class="seg-btn" data-mode="translate" role="tab" aria-selected="false">Traducir</button>
         </div>
         <div class="ws-tools">
+          <span class="lang-pair" id="langPair" hidden>
+            <label class="sr-only" for="sourceLang">Idioma de origen</label>
+            <select id="sourceLang" class="select" disabled><option>Detectar idioma</option></select>
+            <span class="lang-arrow" aria-hidden="true">→</span>
+            <label class="sr-only" for="targetLang">Idioma de destino</label>
+            <select id="targetLang" class="select">
+              <option value="es">Español</option><option value="en" selected>English</option><option value="ca">Català</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="it">Italiano</option><option value="pt">Português</option>
+            </select>
+          </span>
           <label class="sr-only" for="stylePreset">Estilo</label>
           <select id="stylePreset" class="select">
             <option value="natural" selected>Natural</option>
@@ -73,6 +83,11 @@
           <div class="pane-foot"><span id="outWordCount"></span><button type="button" class="btn btn-ghost btn-sm" id="btnCopy" hidden>Copiar</button></div>
         </div>
       </div>
+      <div class="stats" id="stats" hidden>
+        <h3>Cambios en el estilo</h3>
+        <div class="stats-grid" id="statsGrid"></div>
+        <p class="stats-note">Calculado en tu navegador comparando el texto original con el resultado.</p>
+      </div>
       <div class="ws-cta">
         <button type="button" class="btn btn-primary btn-lg" id="btnRun"><span id="btnRunText">Reescribir texto</span><kbd>Ctrl ↵</kbd></button>
       </div>
@@ -80,12 +95,12 @@
     <p class="note">Revisa siempre el resultado antes de usarlo. Tu texto se envía al modelo solo para generar la respuesta.</p>
   </main>
 
-  <footer class="foot"><a href="https://trujillomingorance.com">trujillomingorance.com</a></footer>
+  <footer class="foot">© 2026 <a href="https://trujillomingorance.com">ATM Software Labs</a> · <a href="https://trujillomingorance.com">trujillomingorance.com</a></footer>
 
   <div class="modal" id="authModal" hidden>
     <div class="modal-card auth-card" role="dialog" aria-modal="true" aria-labelledby="authTitle">
       <button type="button" class="icon-btn modal-x" data-close-auth aria-label="Cerrar">✕</button>
-      <img src="/img/atm-logo.png?v=202610132045" alt="" width="44" height="44" class="auth-logo">
+      <img src="/img/atm-logo.png?v=202610132110" alt="" width="44" height="44" class="auth-logo">
       <h2 id="authTitle">Entrar en Rewrite</h2>
       <p class="muted">Usa tu cuenta de trujillomingorance.com.</p>
       <a class="btn btn-outline btn-block" id="btnX" href="/api/auth/x">
@@ -98,6 +113,6 @@
     </div>
   </div>
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
-  <script src="/js/app.js?v=202610132045"></script>
+  <script src="/js/app.js?v=202610132110"></script>
 </body>
 </html>
