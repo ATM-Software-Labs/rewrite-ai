@@ -10,59 +10,66 @@
   <meta name="theme-color" content="#FAFAFA" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#09090B" media="(prefers-color-scheme: dark)">
   <script>(function(){try{var t=localStorage.getItem('ta_theme');if(t!=='light'&&t!=='dark')t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
-  <link rel="icon" href="/favicon.ico?v=202610132110" sizes="any">
-  <link rel="icon" type="image/png" href="/favicon-32.png?v=202610132110">
-  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=202610132110">
+  <link rel="icon" href="/favicon.ico?v=202610132120" sizes="any">
+  <link rel="icon" type="image/png" href="/favicon-32.png?v=202610132120">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=202610132120">
   <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/css/app.css?v=202610132110">
+  <link rel="stylesheet" href="/css/app.css?v=202610132120">
 </head>
 <body>
   <header class="topbar">
     <div class="topbar-inner">
-      <a href="/" class="brand" aria-label="Rewrite, inicio">
-        <img src="/img/atm-logo.png?v=202610132110" alt="" width="28" height="28" class="brand-logo">
+      <a href="/" class="brand" aria-label="Rewrite, inicio" data-i18n-attr="aria-label:home_aria">
+        <img src="/img/atm-logo.png?v=202610132120" alt="" width="28" height="28" class="brand-logo">
         <span>REWRITE</span>
       </a>
       <div class="topbar-actions">
-        <button type="button" class="icon-btn" id="theme-btn" title="Cambiar tema" aria-label="Cambiar tema">
+        <button type="button" class="icon-btn" id="theme-btn" title="Cambiar tema" aria-label="Cambiar tema" data-i18n-attr="title:theme;aria-label:theme">
           <svg class="i-sun" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
           <svg class="i-moon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
         </button>
-        <div id="account-slot"><button type="button" class="btn btn-primary btn-sm" data-open-auth>Entrar</button></div>
+        <div class="lang-wrap">
+          <button type="button" class="lang-pill" id="lang-btn" aria-haspopup="menu" aria-expanded="false">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg>
+            <span class="lang-code">ES</span>
+          </button>
+          <div class="account-menu lang-menu" id="lang-menu" role="menu" hidden></div>
+        </div>
+        <div id="account-slot"><button type="button" class="btn btn-primary btn-sm" data-open-auth data-i18n="login">Entrar</button></div>
       </div>
     </div>
   </header>
 
   <main class="wrap">
     <section class="hero">
-      <p class="kicker">Reescritura de textos</p>
-      <h1>Reescribe, corrige y traduce tus textos</h1>
-      <p class="lede">Pega un borrador y obtén una versión más clara y natural. Se conservan los datos, los enlaces y el formato Markdown.</p>
+      <p class="kicker" data-i18n="kicker">Reescritura de textos</p>
+      <h1 data-i18n="h1">Reescribe, corrige y traduce tus textos</h1>
+      <p class="lede" data-i18n="lede">Pega un borrador y obtén una versión más clara y natural. Se conservan los datos, las cifras y el sentido.</p>
     </section>
 
     <section class="card workspace">
       <div class="ws-bar">
-        <div class="seg" role="tablist" aria-label="Modo">
-          <button type="button" class="seg-btn is-active" data-mode="stealth" role="tab" aria-selected="true">Reescribir</button>
-          <button type="button" class="seg-btn" data-mode="corrector" role="tab" aria-selected="false">Corregir</button>
-          <button type="button" class="seg-btn" data-mode="translate" role="tab" aria-selected="false">Traducir</button>
+        <div class="seg" role="tablist" aria-label="Modo" data-i18n-attr="aria-label:modes_aria">
+          <button type="button" class="seg-btn is-active" data-mode="stealth" role="tab" aria-selected="true" data-i18n="m_rewrite">Reescribir</button>
+          <button type="button" class="seg-btn" data-mode="corrector" role="tab" aria-selected="false" data-i18n="m_correct">Corregir</button>
+          <button type="button" class="seg-btn" data-mode="translate" role="tab" aria-selected="false" data-i18n="m_translate">Traducir</button>
         </div>
         <div class="ws-tools">
           <span class="lang-pair" id="langPair" hidden>
-            <label class="sr-only" for="sourceLang">Idioma de origen</label>
-            <select id="sourceLang" class="select" disabled><option>Detectar idioma</option></select>
+            <label class="sr-only" for="sourceLang" data-i18n="src_lang">Idioma de origen</label>
+            <select id="sourceLang" class="select" disabled><option data-i18n="detect">Detectar idioma</option></select>
             <span class="lang-arrow" aria-hidden="true">→</span>
-            <label class="sr-only" for="targetLang">Idioma de destino</label>
+            <label class="sr-only" for="targetLang" data-i18n="tgt_lang">Idioma de destino</label>
             <select id="targetLang" class="select">
               <option value="es">Español</option><option value="en" selected>English</option><option value="ca">Català</option><option value="fr">Français</option><option value="de">Deutsch</option><option value="it">Italiano</option><option value="pt">Português</option>
             </select>
           </span>
-          <label class="sr-only" for="stylePreset">Estilo</label>
+          <label class="sr-only" for="stylePreset" data-i18n="style">Estilo</label>
           <select id="stylePreset" class="select">
-            <option value="natural" selected>Natural</option>
-            <option value="academic">Académico</option>
-            <option value="simple">Sencillo</option>
-            <option value="executive">Resumen ejecutivo</option>
+            <option value="natural" selected data-i18n="s_natural">Natural</option>
+            <option value="academic" data-i18n="s_academic">Académico</option>
+            <option value="simple" data-i18n="s_simple">Sencillo</option>
+            <option value="executive" data-i18n="s_exec">Resumen ejecutivo</option>
           </select>
           <button type="button" class="icon-btn" id="btnPaste" title="Pegar" aria-label="Pegar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg></button>
           <button type="button" class="icon-btn" id="btnClear" title="Borrar" aria-label="Borrar"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
@@ -70,49 +77,50 @@
       </div>
       <div class="panes">
         <div class="pane">
-          <label class="sr-only" for="inputText">Texto original</label>
-          <textarea id="inputText" placeholder="Pega o escribe aquí tu texto…" spellcheck="true"></textarea>
+          <label class="sr-only" for="inputText" data-i18n="input_label">Texto original</label>
+          <textarea id="inputText" placeholder="Pega o escribe aquí tu texto…" data-i18n-attr="placeholder:ph" spellcheck="true"></textarea>
           <div class="pane-foot"><span id="inWordCount">0 palabras</span></div>
         </div>
         <div class="pane pane-out">
           <div class="empty" id="outputEmpty">
             <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 1 1 3 3L7 19l-4 1 1-4z"/></svg>
-            <p>El resultado aparecerá aquí.</p>
+            <p data-i18n="empty">El resultado aparecerá aquí.</p>
           </div>
           <div id="outputText" class="output" hidden></div>
-          <div class="pane-foot"><span id="outWordCount"></span><button type="button" class="btn btn-ghost btn-sm" id="btnCopy" hidden>Copiar</button></div>
+          <div class="pane-foot"><span id="outWordCount"></span><button type="button" class="btn btn-ghost btn-sm" id="btnCopy" hidden data-i18n="copy">Copiar</button></div>
         </div>
       </div>
       <div class="stats" id="stats" hidden>
-        <h3>Cambios en el estilo</h3>
+        <h3 data-i18n="stats_h">Cambios en el estilo</h3>
         <div class="stats-grid" id="statsGrid"></div>
-        <p class="stats-note">Calculado en tu navegador comparando el texto original con el resultado.</p>
+        <p class="stats-note" data-i18n="stats_note">Calculado en tu navegador comparando el texto original con el resultado.</p>
       </div>
       <div class="ws-cta">
         <button type="button" class="btn btn-primary btn-lg" id="btnRun"><span id="btnRunText">Reescribir texto</span><kbd>Ctrl ↵</kbd></button>
       </div>
     </section>
-    <p class="note">Revisa siempre el resultado antes de usarlo. Tu texto se envía al modelo solo para generar la respuesta.</p>
+    <p class="note" data-i18n="note">Revisa siempre el resultado antes de usarlo. Tu texto se envía al modelo solo para generar la respuesta.</p>
   </main>
 
   <footer class="foot">© 2026 <a href="https://trujillomingorance.com">ATM Software Labs</a> · <a href="https://trujillomingorance.com">trujillomingorance.com</a></footer>
 
   <div class="modal" id="authModal" hidden>
     <div class="modal-card auth-card" role="dialog" aria-modal="true" aria-labelledby="authTitle">
-      <button type="button" class="icon-btn modal-x" data-close-auth aria-label="Cerrar">✕</button>
-      <img src="/img/atm-logo.png?v=202610132110" alt="" width="44" height="44" class="auth-logo">
-      <h2 id="authTitle">Entrar en Rewrite</h2>
-      <p class="muted">Usa tu cuenta de trujillomingorance.com.</p>
+      <button type="button" class="icon-btn modal-x" data-close-auth aria-label="Cerrar" data-i18n-attr="aria-label:close">✕</button>
+      <img src="/img/atm-logo.png?v=202610132120" alt="" width="44" height="44" class="auth-logo">
+      <h2 id="authTitle" data-i18n="auth_title">Entrar en Rewrite</h2>
+      <p class="muted" data-i18n="auth_sub">Usa tu cuenta de trujillomingorance.com.</p>
       <a class="btn btn-outline btn-block" id="btnX" href="/api/auth/x">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
-        Continuar con X</a>
+        <span data-i18n="auth_x">Continuar con X</span></a>
       <a class="btn btn-outline btn-block" id="btnGoogle" href="/api/auth/google">
         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M21 12.2c0-.7-.1-1.4-.2-2H12v3.8h5.1a4.4 4.4 0 0 1-1.9 2.9v2.4h3.1c1.8-1.7 2.7-4.1 2.7-7.1z"/><path d="M12 21.5c2.6 0 4.7-.9 6.3-2.3l-3.1-2.4c-.9.6-2 .9-3.2.9-2.5 0-4.6-1.7-5.3-3.9H3.5v2.5A9.5 9.5 0 0 0 12 21.5z"/><path d="M6.7 13.8a5.7 5.7 0 0 1 0-3.6V7.7H3.5a9.5 9.5 0 0 0 0 8.6z"/><path d="M12 6.3c1.4 0 2.6.5 3.6 1.4l2.7-2.7A9.5 9.5 0 0 0 3.5 7.7l3.2 2.5C7.4 8 9.5 6.3 12 6.3z"/></svg>
-        Continuar con Google</a>
-      <p class="fine">Puedes usar Rewrite sin cuenta. Iniciar sesión solo muestra tu nombre y sincroniza la sesión entre los sitios de trujillomingorance.com.</p>
+        <span data-i18n="auth_g">Continuar con Google</span></a>
+      <p class="fine" data-i18n="auth_fine">Puedes usar Rewrite sin cuenta. Iniciar sesión solo muestra tu nombre y sincroniza la sesión entre los sitios de trujillomingorance.com.</p>
     </div>
   </div>
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
-  <script src="/js/app.js?v=202610132110"></script>
+  <script src="/js/i18n.js?v=202610132120"></script>
+  <script src="/js/app.js?v=202610132120"></script>
 </body>
 </html>
