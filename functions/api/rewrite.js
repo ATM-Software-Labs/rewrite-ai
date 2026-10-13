@@ -551,10 +551,10 @@ function calculateMetrics(text) {
 
 /* ---------- Instrucciones de reescritura (sin objetivos de evasión de detectores) ---------- */
 const STYLES_ES = {
-  natural: 'Tono conversacional pero profesional, como un buen artículo divulgativo escrito por una persona: cercano, claro, con alguna frase corta que remate una idea.',
+  natural: 'Tono conversacional pero profesional, como una buena columna de prensa: cercano y claro, con alguna frase muy corta (de 4 a 8 palabras) que remate una idea y alguna pregunta o giro coloquial ocasional.',
   academic: 'Registro académico: preciso, impersonal cuando convenga, con conectores formales (no obstante, por tanto, en la medida en que) y frases más elaboradas, sin jerga vacía.',
-  simple: 'Lenguaje sencillo: frases cortas, palabras cotidianas, explica cualquier término técnico en pocas palabras. Que lo entienda alguien de 14 años.',
-  executive: 'Resumen ejecutivo: condensa a lo esencial en 2-4 párrafos breves. Empieza por la conclusión, luego los datos clave y termina con la implicación práctica. Puedes reducir la longitud a la mitad.',
+  simple: 'Lenguaje sencillo: frases cortas (menos de 15 palabras), palabras cotidianas y explica entre paréntesis o con un ejemplo cualquier término técnico (refino, tierras raras…). Que lo entienda alguien de 14 años.',
+  executive: 'Resumen ejecutivo: como máximo 120 palabras en 2 o 3 párrafos breves. Primera frase: la conclusión. Después, solo los datos clave. Última frase: qué implica en la práctica.',
 };
 const STYLES_EN = {
   natural: 'Conversational but professional, like a good feature article written by a person: warm, clear, with the occasional short sentence that lands a point.',
@@ -578,7 +578,7 @@ function buildPrompts(mode, preset, isEnglish, text, styleGuide, calibration) {
         'Avoid stock phrases: "in conclusion", "it is worth noting", "paradox", "crucial", "in today\'s world", "delve", "landscape", "tapestry", "moreover", "furthermore", "not only... but also". Avoid parallel triplets and list-like cadence.\n' +
         'Style: ' + (STYLES_EN[preset] || STYLES_EN.natural) + '\n' +
         'Return only the rewritten text, no title, no preface, no explanation.' + extra,
-      userPrompt: 'Rewrite this text:\n\n' + text,
+      userPrompt: 'Thoroughly rewrite the text between <text> and </text>. Mandatory rules:\n1. Do not copy sentences: give every sentence a new structure; the first sentence must start differently from the original.\n2. Paragraphs of 2-4 sentences separated by a blank line.\n3. Plain text: no **, #, *, bullets, numbering or ---; lists become prose.\n4. Keep all figures and names. Avoid: paradox, crucial, delve, in conclusion, in today\'s world.\n5. ' + (STYLES_EN[preset] || STYLES_EN.natural) + '\n\n<text>\n' + text + '\n</text>',
     };
   }
   if (mode === 'corrector') return {
@@ -593,12 +593,17 @@ function buildPrompts(mode, preset, isEnglish, text, styleGuide, calibration) {
       'Evita muletillas y clichés: "en resumen", "en conclusión", "cabe destacar", "es importante señalar", "paradoja", "crucial", "fundamental", "en un mundo", "en el panorama actual", "a día de hoy", "no solo... sino también", "un tapiz". Evita enumeraciones de tres en tres y el ritmo de lista.\n' +
       'Estilo: ' + (STYLES_ES[preset] || STYLES_ES.natural) + '\n' +
       'Devuelve únicamente el texto reescrito, sin título, sin introducción y sin explicaciones.' + extra,
-    userPrompt: 'Reescribe este texto:\n\n' + text,
+    userPrompt: 'Reescribe a fondo el texto entre <texto> y </texto>. Reglas obligatorias:\n' +
+      '1. No copies frases del original: cada frase debe tener otra estructura (cambia el orden, el sujeto o el verbo). La primera frase tiene que empezar distinto que el original.\n' +
+      '2. Divide el resultado en párrafos de 2 a 4 frases separados por una línea en blanco.\n' +
+      '3. Texto plano: sin **, #, *, viñetas, numeración ni ---. Las listas se cuentan como prosa.\n' +
+      '4. Mantén todas las cifras y nombres. No uses: paradoja, crucial, fundamental, cabe destacar, en resumen, en conclusión, en un mundo.\n' +
+      '5. ' + (STYLES_ES[preset] || STYLES_ES.natural) + '\n\n<texto>\n' + text + '\n</texto>',
   };
 }
 
 function stripMarkdown(t) {
-  return String(t || '')
+  return String(t || '').replace(/<\/?(texto|text)>/gi, '')
     .replace(/^\s*(?:-{3,}|\*{3,}|_{3,})\s*$/gm, '')
     .replace(/^\s{0,3}#{1,6}\s+/gm, '')
     .replace(/^\s*>\s?/gm, '')
