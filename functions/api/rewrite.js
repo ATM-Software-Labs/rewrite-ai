@@ -85,7 +85,8 @@ export async function onRequestPost(context) {
       model = '',
       stream = false,
       styleGuide = '',
-      calibration = null
+      calibration = null,
+      targetLang = 'en'
     } = body;
 
     if (!text || text.trim().length < 5) {
@@ -98,11 +99,30 @@ export async function onRequestPost(context) {
     const detectedLang = language === 'auto' ? detectTextLanguage(text) : language;
     const isEnglish = detectedLang === 'en';
 
-    const { systemPrompt, userPrompt } = buildPrompts(mode, stylePreset, isEnglish, text, styleGuide, calibration);
+    const { systemPrompt, userPrompt } = mode === 'translate'
+      ? buildTranslatePrompts(text, targetLang)
+      : buildPrompts(mode, stylePreset, isEnglish, text, styleGuide, calibration);
+    const wordCount = text.trim().split(/\s+/).length;
+    // Modelo rápido (8B) para correcciones cortas; 70B para reescribir y traducir
+    const cfModel = (mode === 'corrector' && wordCount <= 300) ? '@cf/meta/llama-3.1-8b-instruct-fast' : (env.DEFAULT_MODEL || '@cf/meta/llama-3.3-70b-instruct-fp8-fast');
+    const temperature = mode === 'corrector' ? 0.3 : mode === 'translate' ? 0.4 : 0.85;
 
     const effectiveGroqKey = apiKey || env.GROQ_API_KEY || '';
 
     // --- STREAMING MODE (SSE) ---
+    if (stream && env.AI && !(provider === 'groq' && (apiKey || env.GROQ_API_KEY))) {
+      try {
+        const aiStream = await env.AI.run(cfModel, {
+          messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
+          temperature, top_p: 0.95, max_tokens: 3500, stream: true
+        });
+        return new Response(workersAiToSse(aiStream, cfModel), {
+          headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no', 'Access-Control-Allow-Origin': '*' }
+        });
+      } catch (e) {
+        console.error('Workers AI stream failed, falling back:', e);
+      }
+    }
     if (stream) {
       if (provider === 'groq' && effectiveGroqKey) {
         try {
@@ -127,7 +147,7 @@ export async function onRequestPost(context) {
       humanizedText = await callOpenAI(userPrompt, systemPrompt, apiKey, model || 'gpt-4o-mini');
       usedProvider = 'OpenAI';
     } else if (env.AI) {
-      const modelName = model || env.DEFAULT_MODEL || '@cf/meta/llama-3.3-70b-instruct-fp8-fast';
+      const modelName = cfModel;
       let aiResponse;
       try {
         aiResponse = await env.AI.run(modelName, {
@@ -613,4 +633,38 @@ function stripMarkdown(t) {
     .replace(/[ \t]+$/gm, '')
     .replace(/\n{3,}/g, '\n\n')
     .trim();
+}
+
+
+const LANG_NAMES = { es: 'español', en: 'inglés (English)', ca: 'catalán (català)', fr: 'francés (français)', de: 'alemán (Deutsch)', it: 'italiano', pt: 'portugués (português)' };
+function buildTranslatePrompts(text, target) {
+  const name = LANG_NAMES[target] || LANG_NAMES.en;
+  return {
+    systemPrompt: 'Eres un traductor profesional. Detecta el idioma de origen y traduce al ' + name + ' de forma natural y fluida, como lo escribiría un nativo, sin calcos. Conserva el sentido, los datos, las cifras, las unidades y los nombres propios. Devuelve texto plano en párrafos: sin Markdown (**, #, *, ---); los títulos pasan a ser frases de apertura y las listas, frases. Devuelve solo la traducción, sin notas ni explicaciones.',
+    userPrompt: 'Traduce al ' + name + ' el texto entre <texto> y </texto>:\n\n<texto>\n' + text + '\n</texto>'
+  };
+}
+
+// Convierte el stream SSE de Workers AI ({"response":"..."}) en el formato de la app ({"chunk":"..."})
+function workersAiToSse(aiStream, model) {
+  const enc = new TextEncoder(), dec = new TextDecoder();
+  let buf = '';
+  return aiStream.pipeThrough(new TransformStream({
+    transform(bytes, ctl) {
+      buf += dec.decode(bytes, { stream: true });
+      const lines = buf.split('\n'); buf = lines.pop();
+      for (const raw of lines) {
+        const l = raw.trim();
+        if (!l.startsWith('data:')) continue;
+        const d = l.slice(5).trim();
+        if (!d || d === '[DONE]') continue;
+        try {
+          const j = JSON.parse(d);
+          const piece = typeof j.response === 'string' ? j.response : '';
+          if (piece) ctl.enqueue(enc.encode('data: ' + JSON.stringify({ chunk: piece }) + '\n\n'));
+        } catch (_) {}
+      }
+    },
+    flush(ctl) { ctl.enqueue(enc.encode('data: ' + JSON.stringify({ done: true, model }) + '\n\n')); }
+  }));
 }
