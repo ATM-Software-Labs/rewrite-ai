@@ -183,7 +183,7 @@
           for (var i = 0; i < lines.length; i++) {
             var l = lines[i].trim(); if (l.indexOf('data:') !== 0) continue;
             var d = l.slice(5).trim(); if (d === '[DONE]') continue;
-            try { var p = JSON.parse(d); if (p.chunk) { if (!tFirst) tFirst = performance.now(); acc += p.chunk; showOut(acc, true); } if (p.done && p.text) acc = p.text; } catch (pe) {}
+            try { var p = JSON.parse(d); if (p.chunk) { if (!tFirst) tFirst = performance.now(); acc += p.chunk; showOut(acc, true); } if (p.reset) { acc = ''; showOut('', true); toast(T('t_adjust')); } if (p.done && p.text) acc = p.text; } catch (pe) {}
           }
         }
       } else {
