@@ -1,81 +1,55 @@
 /**
- * Trujillo AI - Auth Proxy for Rewrite AI (Cloudflare Pages Function)
- * Shares user accounts, sessions, and authentication with ai.trujillomingorance.com
+ * Rewrite · sesión compartida con *.trujillomingorance.com
+ *
+ * Rewrite no firma ni verifica tokens: la cookie de sesión (ta_session/atm_session/session_token,
+ * Domain=.trujillomingorance.com) la emite guides.trujillomingorance.com (X) o ai.trujillomingorance.com
+ * (Google) y la verificación se delega a guides con la cookie del usuario. Así no hace falta JWT_SECRET aquí.
  */
+const GUIDES = 'https://guides.trujillomingorance.com';
+const AI = 'https://ai.trujillomingorance.com';
+const NO_STORE = { 'Cache-Control': 'private, no-store', 'Vary': 'Cookie' };
 
-const TRUJILLO_AUTH_UPSTREAM = "https://ai.trujillomingorance.com";
-
-const CORS_HEADERS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, Authorization, Cookie",
-  "Access-Control-Allow-Credentials": "true",
-  "Cache-Control": "no-cache, no-store, must-revalidate, max-age=0",
-  "Pragma": "no-cache",
-  "Expires": "0"
-};
-
-export async function onRequestOptions() {
-  return new Response(null, {
-    status: 204,
-    headers: CORS_HEADERS
-  });
-}
-
-export async function onRequest(context) {
-  const { request, params } = context;
-
-  if (request.method === "OPTIONS") {
-    return new Response(null, { status: 204, headers: CORS_HEADERS });
-  }
-
+function safeReturn(raw, origin) {
   try {
-    const url = new URL(request.url);
-    const actionPath = Array.isArray(params.action) ? params.action.join("/") : (params.action || "");
-    const upstreamUrl = new URL(`/api/auth/${actionPath}${url.search}`, TRUJILLO_AUTH_UPSTREAM);
-
-    const upstreamHeaders = new Headers(request.headers);
-    upstreamHeaders.set("Host", "ai.trujillomingorance.com");
-    upstreamHeaders.set("X-Forwarded-Host", url.hostname);
-    upstreamHeaders.set("X-Forwarded-Proto", "https");
-    upstreamHeaders.set("Origin", "https://ai.trujillomingorance.com");
-    upstreamHeaders.set("Referer", "https://ai.trujillomingorance.com/");
-
-    const hasBody = request.method !== "GET" && request.method !== "HEAD";
-    let bodyData = undefined;
-    if (hasBody) {
-      bodyData = await request.arrayBuffer();
-    }
-
-    const upstreamResponse = await fetch(upstreamUrl.toString(), {
-      method: request.method,
-      headers: upstreamHeaders,
-      body: bodyData,
-      redirect: "follow",
-      cache: "no-store",
-      cf: { cacheTtl: 0, cacheEverything: false }
-    });
-
-    const responseHeaders = new Headers(upstreamResponse.headers);
-    Object.entries(CORS_HEADERS).forEach(([k, v]) => {
-      responseHeaders.set(k, v);
-    });
-
-    const resBody = await upstreamResponse.arrayBuffer();
-
-    return new Response(resBody, {
-      status: upstreamResponse.status,
-      statusText: upstreamResponse.statusText,
-      headers: responseHeaders
-    });
-  } catch (err) {
-    return new Response(JSON.stringify({ error: err.message || "Error en el servicio de autenticacin" }), {
-      status: 500,
-      headers: {
-        ...CORS_HEADERS,
-        "Content-Type": "application/json"
-      }
-    });
-  }
+    const u = new URL(raw || '/', origin);
+    if (u.protocol === 'https:' && (u.hostname === 'trujillomingorance.com' || u.hostname.endsWith('.trujillomingorance.com'))) return u.toString();
+  } catch (_) {}
+  return origin + '/';
 }
 
+export async function onRequest({ request, params }) {
+  const url = new URL(request.url);
+  const action = (Array.isArray(params.action) ? params.action.join('/') : params.action || '').replace(/\/+$/, '');
+  const back = safeReturn(url.searchParams.get('returnTo'), url.origin);
+
+  // Iniciar sesión: redirigir a los flujos que ya tienen el callback registrado
+  if (action === 'x' && request.method === 'GET') {
+    return Response.redirect(`${GUIDES}/api/auth/x?returnTo=${encodeURIComponent(back)}`, 302);
+  }
+  if (action === 'google' && request.method === 'GET') {
+    return Response.redirect(`${AI}/login?redirect_to=${encodeURIComponent(back)}`, 302);
+  }
+
+  if (action === 'me' || action === 'logout') {
+    const headers = new Headers({ 'Accept': 'application/json' });
+    const cookie = request.headers.get('Cookie');
+    const auth = request.headers.get('Authorization');
+    if (cookie) headers.set('Cookie', cookie);
+    if (auth) headers.set('Authorization', auth);
+    try {
+      const up = await fetch(`${GUIDES}/api/auth/${action}`, { method: action === 'logout' ? 'POST' : 'GET', headers, redirect: 'manual' });
+      const out = new Headers({ 'Content-Type': up.headers.get('Content-Type') || 'application/json', ...NO_STORE });
+      // Al cerrar sesión, reenviar las cookies que borra guides (Domain=.trujillomingorance.com) y las locales
+      if (action === 'logout') {
+        const list = typeof up.headers.getSetCookie === 'function' ? up.headers.getSetCookie() : [];
+        for (const c of list) if (/Domain=\.trujillomingorance\.com/i.test(c)) out.append('Set-Cookie', c);
+        for (const n of ['ta_session', 'atm_session', 'session_token']) out.append('Set-Cookie', `${n}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`);
+      }
+      return new Response(await up.arrayBuffer(), { status: up.status, headers: out });
+    } catch (err) {
+      return new Response(JSON.stringify({ error: 'No se pudo comprobar la sesión' }), { status: 502, headers: { 'Content-Type': 'application/json', ...NO_STORE } });
+    }
+  }
+
+  return new Response(JSON.stringify({ error: 'Ruta no encontrada' }), { status: 404, headers: { 'Content-Type': 'application/json', ...NO_STORE } });
+}
