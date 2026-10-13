@@ -45,7 +45,9 @@ export async function onRequest({ request, params }) {
         for (const c of list) if (/Domain=\.trujillomingorance\.com/i.test(c)) out.append('Set-Cookie', c);
         for (const n of ['ta_session', 'atm_session', 'session_token']) out.append('Set-Cookie', `${n}=; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=0`);
       }
-      return new Response(await up.arrayBuffer(), { status: up.status, headers: out });
+      // Sin sesión: 200 con authenticated:false (no es un error y así la consola queda limpia)
+      const status = action === 'me' && up.status === 401 ? 200 : up.status;
+      return new Response(await up.arrayBuffer(), { status, headers: out });
     } catch (err) {
       return new Response(JSON.stringify({ error: 'No se pudo comprobar la sesión' }), { status: 502, headers: { 'Content-Type': 'application/json', ...NO_STORE } });
     }
