@@ -96,6 +96,7 @@
   input.value = store('rw_draft') || '';
   input.addEventListener('input', function () { counts(); store('rw_draft', input.value); });
   counts();
+  $('btnRunText').textContent = LABEL[mode];
   document.querySelectorAll('.seg-btn').forEach(function (b) {
     b.addEventListener('click', function () {
       mode = b.dataset.mode;
