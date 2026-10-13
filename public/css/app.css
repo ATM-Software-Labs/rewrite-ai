@@ -134,3 +134,5 @@ textarea:focus { outline: none; }
 .lang-menu button { display: flex !important; align-items: center; gap: 10px; }
 .lang-menu button[aria-checked="true"] { color: var(--accent) !important; font-weight: 600; }
 .lang-code-sm { display: inline-block; width: 24px; font-size: .72rem; font-weight: 600; color: var(--muted); }
+.lang-flag { display: inline-flex; align-items: center; }
+.flag-svg { width: 20px; height: 14px; border-radius: 3px; box-shadow: 0 0 0 1px rgb(0 0 0 / .12); display: block; }
