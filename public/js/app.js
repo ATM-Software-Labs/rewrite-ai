@@ -49,8 +49,7 @@
       '<span class="account-first">' + esc(String(name).split(/\s+/)[0]) + '</span></button>' +
       '<div class="account-menu" id="account-menu" role="menu" hidden>' +
       '<div class="account-menu-head"><strong>' + esc(name) + '</strong><span>' + esc(handle ? '@' + handle : (me.email || '')) + '</span></div>' +
-      (handle ? '<a role="menuitem" href="https://guides.trujillomingorance.com/u/@' + encodeURIComponent(handle) + '">Mi perfil</a>' : '') +
-      '<a role="menuitem" href="https://guides.trujillomingorance.com/">Guías</a>' +
+      '<a role="menuitem" href="https://trujillomingorance.com/">trujillomingorance.com</a>' +
       '<button type="button" role="menuitem" data-logout>Cerrar sesión</button></div></div>';
     $('account-btn').addEventListener('click', function (e) {
       e.stopPropagation();

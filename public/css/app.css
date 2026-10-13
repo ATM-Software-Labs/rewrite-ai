@@ -1,4 +1,4 @@
-/* Rewrite · mismo sistema visual que guides.trujillomingorance.com (NutriFit: zinc + menta, Outfit) */
+/* Rewrite · sistema visual de trujillomingorance.com (zinc + menta, Outfit) */
 @font-face { font-family: 'Outfit'; font-style: normal; font-weight: 300 700; font-display: swap; src: url('/fonts/outfit-latin-var.woff2') format('woff2'); }
 :root { --font: 'Outfit', ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif; --mono: ui-monospace, "SFMono-Regular", Menlo, monospace; --radius: 16px; --radius-sm: 12px; --ease: cubic-bezier(.22,1,.36,1); --shadow-card: 0 1px 2px 0 rgb(0 0 0 / .04), 0 1px 1px -1px rgb(0 0 0 / .03); }
 html[data-theme="light"] { color-scheme: light; --bg:#FAFAFA; --card:#FFFFFF; --subtle:#F4F4F5; --hover:#F4F4F5; --border:#E4E4E7; --border-strong:#D4D4D8; --text:#18181B; --text-2:#52525B; --muted:#71717A; --accent:#047857; --accent-btn:#047857; --accent-btn-text:#FFFFFF; --accent-soft:#ECFDF5; --header:rgba(250,250,250,.85); --overlay:rgba(9,9,11,.35); --shadow-lift:0 8px 24px -12px rgb(0 0 0 / .18); }

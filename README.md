@@ -11,6 +11,6 @@ Revisa siempre el resultado antes de usarlo; no está pensado para ocultar la au
 
 - Cloudflare Pages (`public/`) + Pages Functions (`functions/`).
 - `/api/rewrite`: llama al modelo (Groq si hay `GROQ_API_KEY`, si no Workers AI).
-- `/api/auth/*`: sesión compartida con `*.trujillomingorance.com`. El inicio de sesión con X usa el flujo de guides.trujillomingorance.com y Google el de ai.trujillomingorance.com; `/api/auth/me` delega la verificación en guides, así que este proyecto no necesita `JWT_SECRET`.
+- `/api/auth/*`: sesión compartida con `*.trujillomingorance.com`. X y Google usan los flujos de acceso compartidos de trujillomingorance.com; `/api/auth/me` delega la verificación en guides, así que este proyecto no necesita `JWT_SECRET`.
 
-Diseño: mismo sistema que las guías (Outfit autoalojada, zinc + menta, claro/oscuro según el sistema).
+Diseño: el de trujillomingorance.com (Outfit autoalojada, zinc + menta, claro/oscuro según el sistema).
