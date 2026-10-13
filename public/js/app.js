@@ -1,6 +1,7 @@
 /* Rewrite · ATM Software Labs — interfaz y sesión compartida con *.trujillomingorance.com */
 (function () {
   'use strict';
+  var T = window.rwT || function (k) { return k; };
   function $(id) { return document.getElementById(id); }
   function store(k, v) { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { return null; } }
   function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
@@ -39,7 +40,7 @@
 
   function paint(me) {
     var slot = $('account-slot');
-    if (!me) { slot.innerHTML = '<button type="button" class="btn btn-primary btn-sm" data-open-auth>Entrar</button>'; return; }
+    if (!me) { slot.innerHTML = '<button type="button" class="btn btn-primary btn-sm" data-open-auth>' + T('login') + '</button>'; return; }
     var name = me.name || me.username || me.handle || (me.email ? me.email.split('@')[0] : 'Usuario');
     var handle = String(me.handle || me.username || '').replace(/^@+/, '');
     var pic = me.avatar || me.picture || me.profile_image_url || '';
@@ -50,7 +51,7 @@
       '<div class="account-menu" id="account-menu" role="menu" hidden>' +
       '<div class="account-menu-head"><strong>' + esc(name) + '</strong><span>' + esc(handle ? '@' + handle : (me.email || '')) + '</span></div>' +
       '<a role="menuitem" href="https://trujillomingorance.com/">trujillomingorance.com</a>' +
-      '<button type="button" role="menuitem" data-logout>Cerrar sesión</button></div></div>';
+      '<button type="button" role="menuitem" data-logout>' + T('menu_logout') + '</button></div></div>';
     $('account-btn').addEventListener('click', function (e) {
       e.stopPropagation();
       var m = $('account-menu'); m.hidden = !m.hidden; this.setAttribute('aria-expanded', String(!m.hidden));
@@ -70,22 +71,27 @@
   }
   function logout() {
     store('rw_me', null); paint(null);
-    fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).finally(function () { toast('Sesión cerrada'); });
+    fetch('/api/auth/logout', { method: 'POST', credentials: 'include' }).finally(function () { toast(T('t_logout')); });
   }
   loadMe();
+  var lastMe = null; var _paint = paint; paint = function (me) { lastMe = me; _paint(me); };
+  document.addEventListener('rw:lang', function () {
+    paint(lastMe); counts(); $('btnRunText').textContent = running ? T('processing') : LABEL[mode];
+    if (!$('stats').hidden && lastStats) renderStats(lastStats[0], lastStats[1]);
+  });
   if (/[?&](auth|login)=/.test(location.search)) { if (/login/.test(location.search)) openAuth(); history.replaceState({}, '', '/'); }
 
   /* Espacio de trabajo */
   var mode = 'stealth', running = false;
-  var LABEL = { stealth: 'Reescribir texto', corrector: 'Corregir texto', translate: 'Traducir texto' };
+  var LABEL = { get stealth() { return T('run_rewrite'); }, get corrector() { return T('run_correct'); }, get translate() { return T('run_translate'); } };
   var tl = store('rw_target'); if (tl) $('targetLang').value = tl;
   $('targetLang').addEventListener('change', function () { store('rw_target', this.value); });
   setTimeout(function () { var m = store('rw_mode'); var b = m && document.querySelector('.seg-btn[data-mode="' + m + '"]'); if (b) b.click(); }, 0);
   var input = $('inputText'), out = $('outputText');
   function words(t) { t = t.trim(); return t ? t.split(/\s+/).length : 0; }
   function counts() {
-    var n = words(input.value); $('inWordCount').textContent = n + (n === 1 ? ' palabra' : ' palabras');
-    var o = words(out.textContent); $('outWordCount').textContent = out.hidden ? '' : o + (o === 1 ? ' palabra' : ' palabras');
+    var n = words(input.value); $('inWordCount').textContent = n + ' ' + (n === 1 ? T('w1') : T('wN'));
+    var o = words(out.textContent); $('outWordCount').textContent = out.hidden ? '' : o + ' ' + (o === 1 ? T('w1') : T('wN'));
   }
   input.value = store('rw_draft') || '';
   input.addEventListener('input', function () { counts(); store('rw_draft', input.value); });
@@ -113,12 +119,12 @@
   function resetOut() { $('stats').hidden = true; out.textContent = ''; out.hidden = true; $('outputEmpty').hidden = false; $('btnCopy').hidden = true; counts(); }
   $('btnClear').addEventListener('click', function () { input.value = ''; store('rw_draft', null); resetOut(); input.focus(); });
   $('btnPaste').addEventListener('click', function () {
-    if (!navigator.clipboard || !navigator.clipboard.readText) { toast('Usa Ctrl + V para pegar'); return; }
-    navigator.clipboard.readText().then(function (t) { if (t) { input.value = t; store('rw_draft', t); counts(); } }).catch(function () { toast('Usa Ctrl + V para pegar'); });
+    if (!navigator.clipboard || !navigator.clipboard.readText) { toast(T('t_paste')); return; }
+    navigator.clipboard.readText().then(function (t) { if (t) { input.value = t; store('rw_draft', t); counts(); } }).catch(function () { toast(T('t_paste')); });
   });
   $('btnCopy').addEventListener('click', function () {
     var t = out.textContent;
-    (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { toast('Copiado'); }, function () { toast('No se pudo copiar'); });
+    (navigator.clipboard ? navigator.clipboard.writeText(t) : Promise.reject()).then(function () { toast(T('t_copied')); }, function () { toast(T('t_copyfail')); });
   });
   document.addEventListener('keydown', function (e) { if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') run(); });
   $('btnRun').addEventListener('click', run);
@@ -138,23 +144,25 @@
     CLICHES.forEach(function (k) { var i = 0; while ((i = low.indexOf(k, i)) !== -1) { c++; i += k.length; } });
     return c;
   }
+  var lastStats = null;
   function renderStats(before, after) {
+    lastStats = [before, after];
     var a = sentenceStats(before), b = sentenceStats(after);
     var ca = countCliches(before), cb = countCliches(after);
     var wa = words(stripMd(before)), wb = words(after);
     function f(x) { return x.toFixed(1).replace('.', ','); }
     $('statsGrid').innerHTML =
-      '<div class="stat"><div class="stat-label">Variedad en la longitud de las frases (desv. típica, palabras)</div><div class="stat-value">' + f(a.sd) + ' → ' + f(b.sd) + '</div></div>' +
-      '<div class="stat"><div class="stat-label">Muletillas y clichés habituales</div><div class="stat-value">' + ca + ' → ' + cb + ' <small>(' + Math.max(0, ca - cb) + ' eliminados)</small></div></div>' +
-      '<div class="stat"><div class="stat-label">Palabras</div><div class="stat-value">' + wa + ' → ' + wb + ' <small>(' + b.n + ' frases)</small></div></div>';
+      '<div class="stat"><div class="stat-label">' + T('st_var') + '</div><div class="stat-value">' + f(a.sd) + ' → ' + f(b.sd) + '</div></div>' +
+      '<div class="stat"><div class="stat-label">' + T('st_cli') + '</div><div class="stat-value">' + ca + ' → ' + cb + ' <small>(' + Math.max(0, ca - cb) + ' ' + T('st_removed') + ')</small></div></div>' +
+      '<div class="stat"><div class="stat-label">' + T('st_words') + '</div><div class="stat-value">' + wa + ' → ' + wb + ' <small>(' + b.n + ' ' + T('st_sent') + ')</small></div></div>';
     $('stats').hidden = false;
   }
 
   async function run() {
     if (running) return;
     var text = input.value.trim();
-    if (text.length < 5) { toast('Escribe o pega un texto primero'); input.focus(); return; }
-    running = true; var btn = $('btnRun'); btn.disabled = true; $('btnRunText').textContent = 'Procesando…';
+    if (text.length < 5) { toast(T('t_empty')); input.focus(); return; }
+    running = true; var btn = $('btnRun'); btn.disabled = true; $('btnRunText').textContent = T('processing');
     showOut('', true); $('stats').hidden = true;
     var acc = '', t0 = performance.now(), tFirst = 0;
     window.__rwTiming = null;
@@ -163,7 +171,7 @@
         method: 'POST', headers: { 'Content-Type': 'application/json', 'Accept': 'text/event-stream, application/json' },
         body: JSON.stringify({ text: text, mode: mode, stylePreset: $('stylePreset').value, targetLang: $('targetLang').value, language: 'auto', stream: true })
       });
-      if (!res.ok) { var err = await res.json().catch(function () { return {}; }); throw new Error(err.error || ('Error del servidor (' + res.status + ')')); }
+      if (!res.ok) { var err = await res.json().catch(function () { return {}; }); throw new Error(err.error || (T('t_server') + ' (' + res.status + ')')); }
       var ct = res.headers.get('content-type') || '';
       if (ct.indexOf('text/event-stream') !== -1 && res.body && res.body.getReader) {
         var reader = res.body.getReader(), dec = new TextDecoder(), buf = '';
@@ -180,13 +188,13 @@
       } else {
         var data = await res.json(); acc = data.humanized || data.text || '';
       }
-      if (!acc.trim()) throw new Error('El modelo no devolvió texto. Inténtalo de nuevo.');
+      if (!acc.trim()) throw new Error(T('t_noout'));
       if (!tFirst) tFirst = performance.now();
       showOut(acc.trim(), false);
       window.__rwTiming = { ttft: Math.round(tFirst - t0), total: Math.round(performance.now() - t0) };
       if (mode === 'stealth') renderStats(text, out.textContent);
     } catch (e) {
-      resetOut(); toast(e.message || 'No se pudo procesar el texto');
+      resetOut(); toast(e.message || T('t_fail'));
     } finally {
       running = false; btn.disabled = false; $('btnRunText').textContent = LABEL[mode];
     }

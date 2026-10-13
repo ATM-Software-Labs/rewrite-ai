@@ -125,3 +125,12 @@ textarea:focus { outline: none; }
   .stats-grid { grid-template-columns: 1fr; }
   .ws-tools { flex-wrap: wrap; }
 }
+
+/* Selector de idioma (pastilla como en ATM Docs) */
+.lang-wrap { position: relative; }
+.lang-pill { display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--card); color: var(--text-2); font-size: .82rem; font-weight: 600; letter-spacing: .03em; cursor: pointer; }
+.lang-pill:hover { background: var(--hover); color: var(--text); }
+.lang-menu { min-width: 180px; }
+.lang-menu button { display: flex !important; align-items: center; gap: 10px; }
+.lang-menu button[aria-checked="true"] { color: var(--accent) !important; font-weight: 600; }
+.lang-code-sm { display: inline-block; width: 24px; font-size: .72rem; font-weight: 600; color: var(--muted); }

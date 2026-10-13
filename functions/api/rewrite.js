@@ -105,6 +105,8 @@ export async function onRequestPost(context) {
     const wordCount = text.trim().split(/\s+/).length;
     // Modelo rápido (8B) para correcciones cortas; 70B para reescribir y traducir
     const cfModel = (mode === 'corrector' && wordCount <= 300) ? '@cf/meta/llama-3.1-8b-instruct-fast' : (env.DEFAULT_MODEL || '@cf/meta/llama-3.3-70b-instruct-fp8-fast');
+    // Tope de tokens proporcional al texto (≈2 tokens por palabra +20 % de margen) para que Reescribir no se alargue
+    const maxTokens = mode === 'stealth' ? Math.min(3500, Math.max(160, Math.ceil(wordCount * 2.0 * 1.2) + 40)) : 3500;
     const temperature = mode === 'corrector' ? 0.3 : mode === 'translate' ? 0.4 : 0.85;
 
     const effectiveGroqKey = apiKey || env.GROQ_API_KEY || '';
@@ -114,7 +116,7 @@ export async function onRequestPost(context) {
       try {
         const aiStream = await env.AI.run(cfModel, {
           messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }],
-          temperature, top_p: 0.95, max_tokens: 3500, stream: true
+          temperature, top_p: 0.95, max_tokens: maxTokens, stream: true
         });
         return new Response(workersAiToSse(aiStream, cfModel), {
           headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no', 'Access-Control-Allow-Origin': '*' }
@@ -571,7 +573,7 @@ function calculateMetrics(text) {
 
 /* ---------- Instrucciones de reescritura (sin objetivos de evasión de detectores) ---------- */
 const STYLES_ES = {
-  natural: 'Tono conversacional pero profesional, como una buena columna de prensa: cercano y claro, con alguna frase muy corta (de 4 a 8 palabras) que remate una idea y alguna pregunta o giro coloquial ocasional.',
+  natural: 'Tono conversacional pero profesional, como una buena columna de prensa: cercano y claro, con frases muy cortas (de 4 a 8 palabras) que rematen ideas y algún giro coloquial ocasional.',
   academic: 'Registro académico: preciso, impersonal cuando convenga, con conectores formales (no obstante, por tanto, en la medida en que) y frases más elaboradas, sin jerga vacía.',
   simple: 'Lenguaje sencillo: frases cortas (menos de 15 palabras), palabras cotidianas y explica entre paréntesis o con un ejemplo cualquier término técnico (refino, tierras raras…). Que lo entienda alguien de 14 años.',
   executive: 'Resumen ejecutivo: como máximo 120 palabras en 2 o 3 párrafos breves. Primera frase: la conclusión. Después, solo los datos clave. Última frase: qué implica en la práctica.',
@@ -584,6 +586,7 @@ const STYLES_EN = {
 };
 
 function buildPrompts(mode, preset, isEnglish, text, styleGuide, calibration) {
+  const wc = text.replace(/[*#>_`-]+/g, ' ').trim().split(/\s+/).filter(Boolean).length;
   const extra = typeof buildStyleBlock === 'function' ? buildStyleBlock(styleGuide, calibration) : '';
   if (isEnglish) {
     if (mode === 'corrector') return {
@@ -598,7 +601,7 @@ function buildPrompts(mode, preset, isEnglish, text, styleGuide, calibration) {
         'Avoid stock phrases: "in conclusion", "it is worth noting", "paradox", "crucial", "in today\'s world", "delve", "landscape", "tapestry", "moreover", "furthermore", "not only... but also". Avoid parallel triplets and list-like cadence.\n' +
         'Style: ' + (STYLES_EN[preset] || STYLES_EN.natural) + '\n' +
         'Return only the rewritten text, no title, no preface, no explanation.' + extra,
-      userPrompt: 'Thoroughly rewrite the text between <text> and </text>. Mandatory rules:\n1. Do not copy sentences: give every sentence a new structure; the first sentence must start differently from the original.\n2. Paragraphs of 2-4 sentences separated by a blank line.\n3. Plain text: no **, #, *, bullets, numbering or ---; lists become prose.\n4. Keep all figures and names. Avoid: paradox, crucial, delve, in conclusion, in today\'s world.\n5. ' + (STYLES_EN[preset] || STYLES_EN.natural) + '\n\n<text>\n' + text + '\n</text>',
+      userPrompt: 'Thoroughly rewrite the text between <text> and </text>. Mandatory rules:\n1. Do not copy sentences: give every sentence a new structure; the first sentence must start differently from the original.\n2. Paragraphs of 2-4 sentences separated by a blank line. Vary sentence length a lot: in each paragraph at least one short sentence (under 8 words) and one long one (over 22).\n3. Plain text: no **, #, *, bullets, numbering or ---; lists become prose.\n4. ' + (preset === 'executive' ? 'At most 120 words.' : 'LENGTH: between ' + Math.round(wc * 0.9) + ' and ' + Math.round(wc * 1.1) + ' words (the original has ' + wc + '). No padding, rhetorical questions or new ideas.') + ' Keep all figures and names. Avoid: paradox, crucial, delve, in conclusion, in today\'s world.\n5. ' + (STYLES_EN[preset] || STYLES_EN.natural) + '\n\n<text>\n' + text + '\n</text>',
     };
   }
   if (mode === 'corrector') return {
@@ -615,9 +618,9 @@ function buildPrompts(mode, preset, isEnglish, text, styleGuide, calibration) {
       'Devuelve únicamente el texto reescrito, sin título, sin introducción y sin explicaciones.' + extra,
     userPrompt: 'Reescribe a fondo el texto entre <texto> y </texto>. Reglas obligatorias:\n' +
       '1. No copies frases del original: cada frase debe tener otra estructura (cambia el orden, el sujeto o el verbo). La primera frase tiene que empezar distinto que el original.\n' +
-      '2. Divide el resultado en párrafos de 2 a 4 frases separados por una línea en blanco.\n' +
+      '2. Divide el resultado en párrafos de 2 a 4 frases separados por una línea en blanco. Alterna mucho la longitud: en cada párrafo, al menos una frase corta (menos de 8 palabras) y otra larga (más de 22).\n' +
       '3. Texto plano: sin **, #, *, viñetas, numeración ni ---. Las listas se cuentan como prosa.\n' +
-      '4. Longitud parecida al original (como mucho un 20 % más, salvo en el resumen ejecutivo); no añadas relleno ni ideas nuevas. Mantén todas las cifras y nombres. No uses: paradoja, crucial, fundamental, cabe destacar, en resumen, en conclusión, en un mundo.\n' +
+      (preset === 'executive' ? '4. Como máximo 120 palabras.' : '4. LONGITUD: entre ' + Math.round(wc * 0.9) + ' y ' + Math.round(wc * 1.1) + ' palabras (el original tiene ' + wc + '). No añadas relleno, preguntas retóricas ni ideas nuevas.') + ' Mantén todas las cifras y nombres. No uses: paradoja, crucial, fundamental, cabe destacar, en resumen, en conclusión, en un mundo.\n' +
       '5. ' + (STYLES_ES[preset] || STYLES_ES.natural) + '\n\n<texto>\n' + text + '\n</texto>',
   };
 }
