@@ -53,6 +53,10 @@
           <button type="button" class="seg-btn is-active" data-mode="stealth" role="tab" aria-selected="true" data-i18n="m_rewrite">Reescribir</button>
           <button type="button" class="seg-btn" data-mode="corrector" role="tab" aria-selected="false" data-i18n="m_correct">Corregir</button>
           <button type="button" class="seg-btn" data-mode="translate" role="tab" aria-selected="false" data-i18n="m_translate">Traducir</button>
+          <button type="button" class="seg-btn" data-mode="audit" role="tab" aria-selected="false">Auditoría IA</button>
+          <button type="button" class="seg-btn" data-mode="sentiment" role="tab" aria-selected="false">Tono</button>
+          <button type="button" class="seg-btn" data-mode="hooks" role="tab" aria-selected="false">Hooks</button>
+          <button type="button" class="seg-btn" data-mode="proofread" role="tab" aria-selected="false">Coherencia</button>
         </div>
         <div class="ws-tools">
           <span class="lang-pair" id="langPair" hidden>
@@ -87,6 +91,7 @@
             <p data-i18n="empty">El resultado aparecerá aquí.</p>
           </div>
           <div id="outputText" class="output" hidden></div>
+          <div id="toolResult" class="tool-result" hidden></div>
           <div class="pane-foot"><span id="outWordCount"></span><button type="button" class="btn btn-ghost btn-sm" id="btnCopy" hidden data-i18n="copy">Copiar</button></div>
         </div>
       </div>

@@ -86,7 +86,7 @@
 
   /* Espacio de trabajo */
   var mode = 'stealth', running = false;
-  var LABEL = { get stealth() { return T('run_rewrite'); }, get corrector() { return T('run_correct'); }, get translate() { return T('run_translate'); } };
+  var LABEL = { get stealth() { return T('run_rewrite'); }, get corrector() { return T('run_correct'); }, get translate() { return T('run_translate'); }, get audit() { return 'Auditar texto con IA'; }, get sentiment() { return 'Analizar tono y emoción'; }, get hooks() { return 'Generar ganchos virales'; }, get proofread() { return 'Auditar coherencia profunda'; } };
   var tl = store('rw_target'); if (tl) $('targetLang').value = tl;
   $('targetLang').addEventListener('change', function () { store('rw_target', this.value); });
   setTimeout(function () { var m = store('rw_mode'); var b = m && document.querySelector('.seg-btn[data-mode="' + m + '"]'); if (b) b.click(); }, 0);
@@ -107,7 +107,7 @@
       $('btnRunText').textContent = LABEL[mode];
       $('stylePreset').hidden = mode !== 'stealth';
       $('langPair').hidden = mode !== 'translate';
-      store('rw_mode', mode);
+      store('rw_mode', mode); resetOut();
     });
   });
   function stripMd(t) {
@@ -120,7 +120,7 @@
     $('outputEmpty').hidden = true; out.hidden = false; $('btnCopy').hidden = streaming;
     out.textContent = stripMd(text); out.classList.toggle('cursor', !!streaming); counts();
   }
-  function resetOut() { $('stats').hidden = true; out.textContent = ''; out.hidden = true; $('outputEmpty').hidden = false; $('btnCopy').hidden = true; counts(); }
+  function resetOut() { $('stats').hidden = true; out.textContent = ''; out.hidden = true; var tr = $('toolResult'); if (tr) { tr.innerHTML = ''; tr.hidden = true; } $('outputEmpty').hidden = false; $('btnCopy').hidden = true; counts(); }
   $('btnClear').addEventListener('click', function () { input.value = ''; store('rw_draft', null); resetOut(); input.focus(); });
   $('btnPaste').addEventListener('click', function () {
     if (!navigator.clipboard || !navigator.clipboard.readText) { toast(T('t_paste')); return; }
@@ -167,7 +167,51 @@
     var text = input.value.trim();
     if (text.length < 5) { toast(T('t_empty')); input.focus(); return; }
     running = true; var btn = $('btnRun'); btn.disabled = true; $('btnRunText').textContent = T('processing');
-    showOut('', true); $('stats').hidden = true;
+    $('stats').hidden = true;
+
+    var isToolMode = ['audit', 'sentiment', 'hooks', 'proofread'].indexOf(mode) !== -1;
+    if (isToolMode) {
+      $('outputEmpty').hidden = true;
+      out.hidden = true;
+      var tr = $('toolResult');
+      if (tr) {
+        tr.hidden = false;
+        tr.innerHTML = '<div class="empty"><p>' + T('processing') + '</p></div>';
+      }
+      try {
+        var tRes = await fetch('/api/tools', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: mode, text: text, targetLanguage: $('targetLang').value })
+        }).catch(function () { return null; });
+
+        if (!tRes || !tRes.ok) {
+          tRes = await fetch('https://ai.trujillomingorance.com/api/tools', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: mode, text: text, targetLanguage: $('targetLang').value })
+          });
+        }
+
+        if (!tRes.ok) {
+          var errObj = await tRes.json().catch(function () { return {}; });
+          throw new Error(errObj.error || ('HTTP ' + tRes.status));
+        }
+
+        var tJson = await tRes.json();
+        renderToolData(mode, tJson.data, tr);
+      } catch (e) {
+        resetOut();
+        toast(e.message || T('t_fail'));
+      } finally {
+        running = false;
+        btn.disabled = false;
+        $('btnRunText').textContent = LABEL[mode] || T('run_rewrite');
+      }
+      return;
+    }
+
+    showOut('', true);
     var acc = '', t0 = performance.now(), tFirst = 0;
     window.__rwTiming = null;
     try {
@@ -203,4 +247,123 @@
       running = false; btn.disabled = false; $('btnRunText').textContent = LABEL[mode];
     }
   }
+
+  function renderToolData(m, data, tr) {
+    if (!tr || !data) return;
+    if (m === 'audit') {
+      var s = data.scores || {};
+      var diag = data.diagnostico_detectores || {};
+      var vers = data.versiones || {};
+      var aiProb = s.ai_probability != null ? s.ai_probability : 50;
+      var aiClass = aiProb < 25 ? 'tool-badge-green' : (aiProb < 60 ? 'tool-badge-yellow' : 'tool-badge-red');
+
+      tr.innerHTML = '<div class="tool-card">' +
+        '<div class="tool-grid" style="margin-bottom:12px;">' +
+          '<div class="stat"><div class="stat-label">Calidad global</div><div class="stat-value">' + (s.global_quality ?? 0) + '%</div></div>' +
+          '<div class="stat"><div class="stat-label">Probabilidad IA</div><div class="stat-value"><span class="tool-badge ' + aiClass + '">' + aiProb + '%</span></div></div>' +
+          '<div class="stat"><div class="stat-label">Perplejidad</div><div class="stat-value">' + (s.perplexity ?? 0) + '</div></div>' +
+          '<div class="stat"><div class="stat-label">Burstiness</div><div class="stat-value">' + (s.burstiness ?? 0) + '</div></div>' +
+          '<div class="stat"><div class="stat-label">Gramática</div><div class="stat-value">' + (s.grammar ?? 0) + '%</div></div>' +
+        '</div>' +
+        '<div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:12px;">' +
+          '<div class="stat"><strong style="font-size:.82rem; display:block; margin-bottom:4px;">Simulación GPTZero</strong><span style="font-size:.85rem; color:var(--text-2);">' + esc(diag.gptzero_simulacion || 'Sin datos') + '</span></div>' +
+          '<div class="stat"><strong style="font-size:.82rem; display:block; margin-bottom:4px;">Simulación Copyleaks</strong><span style="font-size:.85rem; color:var(--text-2);">' + esc(diag.copyleaks_simulacion || 'Sin datos') + '</span></div>' +
+        '</div>' +
+        (data.analisis_critico ? '<div class="stat" style="margin-bottom:12px;"><strong style="font-size:.82rem; display:block; margin-bottom:4px;">Análisis crítico</strong><span style="font-size:.85rem; color:var(--text-2);">' + esc(data.analisis_critico) + '</span></div>' : '') +
+        '<div style="border-top:1px solid var(--border); padding-top:12px;">' +
+          '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">' +
+            '<strong style="font-size:.85rem;">Versiones optimizadas</strong>' +
+            '<div style="display:flex; gap:4px;" id="vTabs">' +
+              '<button type="button" class="version-tab is-active" data-v="human">Humanizada</button>' +
+              '<button type="button" class="version-tab" data-v="seo">SEO</button>' +
+              '<button type="button" class="version-tab" data-v="exec">Resumen ejecutivo</button>' +
+            '</div>' +
+          '</div>' +
+          '<div id="vBox" style="background:var(--subtle); padding:12px; border-radius:10px; font-size:.9rem; line-height:1.6; white-space:pre-wrap; max-height:200px; overflow-y:auto; border:1px solid var(--border); margin-bottom:10px;"></div>' +
+          '<div style="display:flex; justify-content:flex-end; gap:8px;">' +
+            '<button type="button" class="btn btn-outline btn-sm" id="btnCopyV">Copiar versión</button>' +
+            '<button type="button" class="btn btn-primary btn-sm" id="btnApplyV">Usar en el editor</button>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+      var versions = { human: vers.humanizada_antidetector || '', seo: vers.seo_optimizada || '', exec: vers.resumen_ejecutivo || '' };
+      var curV = 'human';
+      function setV(k) {
+        curV = k;
+        var box = $('vBox'); if (box) box.textContent = versions[k] || '';
+        document.querySelectorAll('#vTabs .version-tab').forEach(function(b) { b.classList.toggle('is-active', b.dataset.v === k); });
+      }
+      setV('human');
+      document.querySelectorAll('#vTabs .version-tab').forEach(function(b) {
+        b.addEventListener('click', function() { setV(b.dataset.v); });
+      });
+      $('btnCopyV').addEventListener('click', function() {
+        navigator.clipboard.writeText(versions[curV] || '').then(function() { toast(T('t_copied')); });
+      });
+      $('btnApplyV').addEventListener('click', function() {
+        input.value = versions[curV] || '';
+        counts();
+        toast('Cargado en el editor');
+      });
+
+    } else if (m === 'sentiment') {
+      var f = data.nivel_formalidad != null ? data.nivel_formalidad : 50;
+      tr.innerHTML = '<div class="tool-card">' +
+        '<h3 style="margin:0 0 12px; font-size:.95rem; font-weight:600;">Diagnóstico de tono y emoción</h3>' +
+        '<div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; margin-bottom:14px;">' +
+          '<div class="stat"><div class="stat-label">Tono principal</div><div class="stat-value" style="font-size:.95rem;">' + esc(data.tono_principal || 'Neutro') + '</div></div>' +
+          '<div class="stat"><div class="stat-label">Intención</div><div class="stat-value" style="font-size:.95rem;">' + esc(data.intencion || 'Informar') + '</div></div>' +
+          '<div class="stat"><div class="stat-label">Emoción</div><div class="stat-value" style="font-size:.95rem;">' + esc(data.emocion_detectada || 'Neutro') + '</div></div>' +
+        '</div>' +
+        '<div style="margin-bottom:12px;">' +
+          '<div style="display:flex; justify-content:space-between; font-size:.82rem; margin-bottom:4px;"><span>Formalidad</span><strong>' + f + '%</strong></div>' +
+          '<div class="progress-bar-wrap"><div class="progress-bar-fill" style="width:' + f + '%;"></div></div>' +
+          '<div style="display:flex; justify-content:space-between; font-size:.72rem; color:var(--muted);"><span>Casual</span><span>Estándar</span><span>Ultraformal</span></div>' +
+        '</div>' +
+        (data.sugerencia_ajuste ? '<div class="stat"><div class="stat-label">Sugerencia de ajuste</div><div style="font-size:.88rem; color:var(--text-2); margin-top:2px;">' + esc(data.sugerencia_ajuste) + '</div></div>' : '') +
+      '</div>';
+
+    } else if (m === 'hooks') {
+      var hooks = Array.isArray(data.titulares_gancho) ? data.titulares_gancho : [];
+      var angles = ['Curiosidad / Misterio', 'Beneficio directo / Dolor', 'Dato impactante / Contracorriente'];
+      var hHtml = hooks.map(function(h, idx) {
+        return '<div class="stat" style="display:flex; justify-content:space-between; align-items:center; gap:10px; margin-bottom:8px;">' +
+          '<div><div class="stat-label">' + (angles[idx] || ('Gancho ' + (idx + 1))) + '</div><div style="font-size:.92rem; font-weight:600; margin-top:3px;">' + esc(h) + '</div></div>' +
+          '<button type="button" class="btn btn-outline btn-sm" onclick="navigator.clipboard.writeText(' + JSON.stringify(h) + ').then(function(){alert(\'Copiado\');})">Copiar</button>' +
+        '</div>';
+      }).join('');
+      tr.innerHTML = '<div class="tool-card"><h3 style="margin:0 0 12px; font-size:.95rem; font-weight:600;">Ganchos virales de alta retención</h3>' + (hHtml || '<p class="empty">No se generaron titulares.</p>') + '</div>';
+
+    } else if (m === 'proofread') {
+      var errs = Array.isArray(data.errores_detectados) ? data.errores_detectados : [];
+      var textCor = data.texto_corregido_estilo || '';
+      var eHtml = errs.map(function(e) {
+        return '<div style="background:var(--subtle); border-left:3px solid #EF4444; padding:8px 10px; border-radius:6px; margin-bottom:6px; font-size:.82rem;"><strong>' + esc(e.tipo || 'Observación') + ':</strong> ' + esc(e.descripcion || '') + '</div>';
+      }).join('');
+
+      tr.innerHTML = '<div class="tool-card">' +
+        '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">' +
+          '<h3 style="margin:0; font-size:.95rem; font-weight:600;">Auditoría de coherencia y estilo</h3>' +
+          '<span class="tool-badge">' + errs.length + ' puntos detectados</span>' +
+        '</div>' +
+        (eHtml ? '<div style="margin-bottom:12px; max-height:160px; overflow-y:auto;">' + eHtml + '</div>' : '<p style="color:#10B981; font-size:.85rem; margin-bottom:12px;">Coherencia excelente: no se detectaron fallos lógicos ni redundancias.</p>') +
+        '<div style="border-top:1px solid var(--border); padding-top:10px;">' +
+          '<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">' +
+            '<span class="stat-label">Texto corregido</span>' +
+            '<div style="display:flex; gap:6px;">' +
+              '<button type="button" class="btn btn-outline btn-sm" id="btnCopyPf">Copiar</button>' +
+              '<button type="button" class="btn btn-primary btn-sm" id="btnApplyPf">Aplicar al editor</button>' +
+            '</div>' +
+          '</div>' +
+          '<div style="background:var(--subtle); padding:10px 12px; border-radius:10px; font-size:.88rem; line-height:1.6; white-space:pre-wrap; max-height:180px; overflow-y:auto; border:1px solid var(--border);">' + esc(textCor) + '</div>' +
+        '</div>' +
+      '</div>';
+
+      var bC = $('btnCopyPf'), bA = $('btnApplyPf');
+      if (bC) bC.onclick = function() { navigator.clipboard.writeText(textCor).then(function() { toast(T('t_copied')); }); };
+      if (bA) bA.onclick = function() { input.value = textCor; counts(); toast('Texto corregido cargado'); };
+    }
+  }
+
 })();

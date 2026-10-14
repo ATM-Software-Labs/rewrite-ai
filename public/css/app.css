@@ -136,3 +136,17 @@ textarea:focus { outline: none; }
 .lang-code-sm { display: inline-block; width: 24px; font-size: .72rem; font-weight: 600; color: var(--muted); }
 .lang-flag { display: inline-flex; align-items: center; }
 .flag-svg { width: 20px; height: 14px; border-radius: 3px; box-shadow: 0 0 0 1px rgb(0 0 0 / .12); display: block; }
+
+/* Resultados de Motores Especializados */
+.tool-result { padding: 18px 20px; font-size: .92rem; overflow-y: auto; max-height: 62vh; display: flex; flex-direction: column; gap: 14px; }
+.tool-card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 14px 16px; }
+.tool-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 8px; }
+.tool-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 10px; border-radius: 999px; font-size: .78rem; font-weight: 600; border: 1px solid var(--border); background: var(--subtle); color: var(--text); }
+.tool-badge-green { background: rgba(16,185,129,.15); color: #10B981; border-color: rgba(16,185,129,.3); }
+.tool-badge-yellow { background: rgba(245,158,11,.15); color: #F59E0B; border-color: rgba(245,158,11,.3); }
+.tool-badge-red { background: rgba(239,68,68,.15); color: #EF4444; border-color: rgba(239,68,68,.3); }
+.progress-bar-wrap { width: 100%; height: 8px; border-radius: 999px; background: var(--subtle); overflow: hidden; border: 1px solid var(--border); margin: 6px 0; }
+.progress-bar-fill { height: 100%; border-radius: 999px; background: var(--accent); transition: width .4s var(--ease); }
+.version-tab { padding: 5px 12px; border-radius: 8px; border: 1px solid var(--border); background: var(--subtle); font-size: .82rem; font-weight: 500; cursor: pointer; color: var(--text-2); }
+.version-tab.is-active { background: var(--card); color: var(--text); border-color: var(--accent); }
+
