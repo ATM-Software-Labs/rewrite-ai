@@ -50,6 +50,9 @@
       '<span class="account-first">' + esc(String(name).split(/\s+/)[0]) + '</span></button>' +
       '<div class="account-menu" id="account-menu" role="menu" hidden>' +
       '<div class="account-menu-head"><strong>' + esc(name) + '</strong><span>' + esc(handle ? '@' + handle : (me.email || '')) + '</span></div>' +
+      (handle ? '<a role="menuitem" href="https://guides.trujillomingorance.com/u/@' + encodeURIComponent(handle) + '">' + T('menu_profile') + '</a>' : '') +
+      '<a role="menuitem" href="https://guides.trujillomingorance.com/settings">' + T('menu_settings') + '</a>' +
+      '<a role="menuitem" href="https://guides.trujillomingorance.com/achievements">' + T('menu_ach') + '</a>' +
       '<a role="menuitem" href="https://trujillomingorance.com/">trujillomingorance.com</a>' +
       '<button type="button" role="menuitem" data-logout>' + T('menu_logout') + '</button></div></div>';
     $('account-btn').addEventListener('click', function (e) {

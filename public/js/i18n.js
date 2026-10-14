@@ -439,6 +439,8 @@ var D={
 var NAMES={"es": "Español", "en": "English", "ca": "Català", "fr": "Français", "de": "Deutsch", "it": "Italiano", "pt": "Português"};
 function pick(){try{var s=localStorage.getItem('rw_lang');if(D[s])return s;}catch(e){}
  var L=(navigator.languages||[navigator.language||'es']);for(var i=0;i<L.length;i++){var c=String(L[i]).slice(0,2).toLowerCase();if(D[c])return c;}return 'es';}
+
+(function(){var K={"es": ["Mi perfil", "Configurar perfil", "Logros"], "en": ["My profile", "Profile settings", "Achievements"], "ca": ["El meu perfil", "Configura el perfil", "Assoliments"], "fr": ["Mon profil", "Paramètres du profil", "Succès"], "de": ["Mein Profil", "Profileinstellungen", "Erfolge"], "it": ["Il mio profilo", "Impostazioni profilo", "Traguardi"], "pt": ["O meu perfil", "Configurar perfil", "Conquistas"]};Object.keys(K).forEach(function(l){if(D[l]){D[l].menu_profile=K[l][0];D[l].menu_settings=K[l][1];D[l].menu_ach=K[l][2];}});})();
 var lang=pick();
 window.rwT=function(k){return (D[lang]&&D[lang][k])||D.es[k]||k;};
 window.rwLang=function(){return lang;};
