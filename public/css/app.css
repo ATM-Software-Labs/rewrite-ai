@@ -36,7 +36,7 @@ html[data-theme="dark"] .i-moon, html[data-theme="light"] .i-sun { display: none
 .btn-outline:hover { background: var(--hover); border-color: var(--border-strong); }
 .btn-ghost { background: transparent; border-color: var(--border); color: var(--text-2); }
 .btn-ghost:hover { color: var(--accent); border-color: var(--accent); }
-kbd { font-family: var(--font); font-size: .72rem; opacity: .7; border: 1px solid currentColor; border-radius: 6px; padding: 1px 6px; }
+kbd { font-family: var(--font); font-size: .72rem; opacity: .9; border: 1px solid currentColor; border-radius: 6px; padding: 1px 6px; }
 
 /* Cuenta: pastilla + menú */
 .account-wrap { position: relative; }
