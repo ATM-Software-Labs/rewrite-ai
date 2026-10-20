@@ -2,6 +2,12 @@
 (function(){'use strict';
 var D={
 "es": {
+"net_aria": "Sitios de ATM Software Labs",
+"net_guides": "Guías",
+"net_priv": "Privacidad",
+"net_terms": "Términos",
+"net_priv_url": "https://trujillomingorance.com/privacy",
+"net_terms_url": "https://trujillomingorance.com/terms",
 "t_adjust": "Ajustando la longitud…",
 "title": "Rewrite · Reescritura de textos · ATM Software Labs",
 "desc": "Reescribe, corrige y traduce textos para que se lean más claros y naturales.",
@@ -64,6 +70,12 @@ var D={
 "nf_btn": "Volver a Rewrite"
 },
 "en": {
+"net_aria": "ATM Software Labs sites",
+"net_guides": "Guides",
+"net_priv": "Privacy",
+"net_terms": "Terms",
+"net_priv_url": "https://trujillomingorance.com/en/privacy/",
+"net_terms_url": "https://trujillomingorance.com/en/terms/",
 "t_adjust": "Adjusting the length…",
 "title": "Rewrite · Text rewriting · ATM Software Labs",
 "desc": "Rewrite, proofread and translate texts so they read clearer and more naturally.",
@@ -126,6 +138,12 @@ var D={
 "nf_btn": "Back to Rewrite"
 },
 "ca": {
+"net_aria": "Llocs d’ATM Software Labs",
+"net_guides": "Guies",
+"net_priv": "Privacitat",
+"net_terms": "Termes",
+"net_priv_url": "https://trujillomingorance.com/ca/privacy/",
+"net_terms_url": "https://trujillomingorance.com/ca/terms/",
 "t_adjust": "Ajustant la llargada…",
 "title": "Rewrite · Reescriptura de textos · ATM Software Labs",
 "desc": "Reescriu, corregeix i tradueix textos perquè es llegeixin més clars i naturals.",
@@ -188,6 +206,12 @@ var D={
 "nf_btn": "Tornar a Rewrite"
 },
 "fr": {
+"net_aria": "Sites d’ATM Software Labs",
+"net_guides": "Guides",
+"net_priv": "Confidentialité",
+"net_terms": "Conditions",
+"net_priv_url": "https://trujillomingorance.com/en/privacy/",
+"net_terms_url": "https://trujillomingorance.com/en/terms/",
 "t_adjust": "Ajustement de la longueur…",
 "title": "Rewrite · Réécriture de textes · ATM Software Labs",
 "desc": "Réécrivez, corrigez et traduisez vos textes pour qu'ils soient plus clairs et naturels.",
@@ -250,6 +274,12 @@ var D={
 "nf_btn": "Retour à Rewrite"
 },
 "de": {
+"net_aria": "Websites von ATM Software Labs",
+"net_guides": "Leitfäden",
+"net_priv": "Datenschutz",
+"net_terms": "Nutzungsbedingungen",
+"net_priv_url": "https://trujillomingorance.com/en/privacy/",
+"net_terms_url": "https://trujillomingorance.com/en/terms/",
 "t_adjust": "Länge wird angepasst…",
 "title": "Rewrite · Texte umschreiben · ATM Software Labs",
 "desc": "Texte umschreiben, korrigieren und übersetzen, damit sie klarer und natürlicher klingen.",
@@ -312,6 +342,12 @@ var D={
 "nf_btn": "Zurück zu Rewrite"
 },
 "it": {
+"net_aria": "Siti di ATM Software Labs",
+"net_guides": "Guide",
+"net_priv": "Privacy",
+"net_terms": "Termini",
+"net_priv_url": "https://trujillomingorance.com/en/privacy/",
+"net_terms_url": "https://trujillomingorance.com/en/terms/",
 "t_adjust": "Regolazione della lunghezza…",
 "title": "Rewrite · Riscrittura di testi · ATM Software Labs",
 "desc": "Riscrivi, correggi e traduci testi perché risultino più chiari e naturali.",
@@ -374,6 +410,12 @@ var D={
 "nf_btn": "Torna a Rewrite"
 },
 "pt": {
+"net_aria": "Sites da ATM Software Labs",
+"net_guides": "Guias",
+"net_priv": "Privacidade",
+"net_terms": "Termos",
+"net_priv_url": "https://trujillomingorance.com/en/privacy/",
+"net_terms_url": "https://trujillomingorance.com/en/terms/",
 "t_adjust": "A ajustar o comprimento…",
 "title": "Rewrite · Reescrita de textos · ATM Software Labs",
 "desc": "Reescreva, corrija e traduza textos para que fiquem mais claros e naturais.",

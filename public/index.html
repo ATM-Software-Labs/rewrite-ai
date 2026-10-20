@@ -17,11 +17,12 @@
   <meta name="theme-color" content="#FAFAFA" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#09090B" media="(prefers-color-scheme: dark)">
   <script>(function(){try{var t=localStorage.getItem('ta_theme');if(t!=='light'&&t!=='dark')t=matchMedia('(prefers-color-scheme: light)').matches?'light':'dark';document.documentElement.setAttribute('data-theme',t);}catch(e){}})();</script>
+  <link rel="icon" href="/favicon.svg?v=20261020a" type="image/svg+xml">
   <link rel="icon" href="/favicon.ico?v=202610141110" sizes="any">
   <link rel="icon" type="image/png" href="/favicon-32.png?v=202610141110">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png?v=202610141110">
-  <link rel="preload" href="/fonts/outfit-latin-var.woff2" as="font" type="font/woff2" crossorigin>
-  <link rel="stylesheet" href="/css/app.css?v=202610202155">
+  <link rel="preload" href="/fonts/inter-latin-400-normal.woff2" as="font" type="font/woff2" crossorigin>
+  <link rel="stylesheet" href="/css/app.css?v=202610202310">
 </head>
 <body>
   <header class="topbar">
@@ -114,7 +115,7 @@
     <p class="note" data-i18n="note">Revisa siempre el resultado antes de usarlo. Tu texto se envía al modelo solo para generar la respuesta.</p>
   </main>
 
-  <footer class="foot">© 2026 <a href="https://trujillomingorance.com">ATM Software Labs</a> · <a href="https://trujillomingorance.com">trujillomingorance.com</a> · <a href="https://labs.trujillomingorance.com" rel="noopener">Labs</a></footer>
+  <footer class="foot"><div class="atm-net"><div class="atm-net__in"><a class="atm-net__brand" href="https://trujillomingorance.com/">ATM Software Labs</a><nav aria-label="Sitios de ATM Software Labs" data-i18n-attr="aria-label:net_aria"><ul class="atm-net__sites"><li><a href="https://labs.trujillomingorance.com/">ATM Labs</a></li><li><a href="https://invest.trujillomingorance.com/">INVEST</a></li><li><a href="https://charts.trujillomingorance.com/">Markets Briefing</a></li><li><a href="https://ai.trujillomingorance.com/">Trujillo AI</a></li><li><a href="https://guides.trujillomingorance.com/" data-i18n="net_guides">Guías</a></li><li><a href="https://tools.trujillomingorance.com/">Tools</a></li><li><a href="https://rewrite.trujillomingorance.com/" aria-current="page">Rewrite</a></li><li><a href="https://alberto.trujillomingorance.com/">Alberto</a></li></ul></nav><p class="atm-net__legal">© 2026 ATM Software Labs · Alberto Trujillo Mingorance · <a href="https://trujillomingorance.com/privacy" data-i18n="net_priv" data-i18n-attr="href:net_priv_url">Privacidad</a> · <a href="https://trujillomingorance.com/terms" data-i18n="net_terms" data-i18n-attr="href:net_terms_url">Términos</a></p></div></div></footer>
 
   <div class="modal" id="authModal" hidden>
     <div class="modal-card auth-card" role="dialog" aria-modal="true" aria-labelledby="authTitle">
@@ -133,7 +134,7 @@
   </div>
   <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
   <script src="/js/flags.js?v=202610141110"></script>
-  <script src="/js/i18n.js?v=202610141110"></script>
+  <script src="/js/i18n.js?v=202610202310"></script>
   <script src="/js/app.js?v=202610141110"></script>
 </body>
 </html>
