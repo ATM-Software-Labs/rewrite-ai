@@ -31,7 +31,8 @@ export async function onRequest({ request, env }) {
   return json(request, {
     ok: true,
     facts: [
-      ['model', env.DEFAULT_MODEL || '@cf/meta/llama-3.3-70b-instruct-fp8-fast'],
+      ['model', env.GROQ_API_KEY ? 'openai/gpt-oss-120b (Groq)' : (env.DEFAULT_MODEL || '@cf/meta/llama-3.3-70b-instruct-fp8-fast')],
+      ['fallback', env.DEFAULT_MODEL || '@cf/meta/llama-3.3-70b-instruct-fp8-fast'],
       ['workers-ai', env.AI ? 'on' : 'off'],
       ['groq', env.GROQ_API_KEY ? 'on' : 'off'],
       ['env', env.ENVIRONMENT || ''],
