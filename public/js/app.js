@@ -23,6 +23,9 @@
   var returnTo = location.origin + '/';
   $('btnX').href = '/api/auth/x?returnTo=' + encodeURIComponent(returnTo);
   $('btnGoogle').href = '/api/auth/google?returnTo=' + encodeURIComponent(returnTo);
+  $('btnMicrosoft').href = '/api/auth/microsoft?returnTo=' + encodeURIComponent(returnTo);
+  fetch('/api/auth/providers', { cache: 'default' }).then(function (r) { return r.ok ? r.json() : null; })
+    .then(function (p) { if (p && p.microsoft) $('btnMicrosoft').hidden = false; }).catch(function () {});
   var modal = $('authModal');
   function openAuth() { modal.hidden = false; setTimeout(function () { $('btnX').focus(); }, 30); }
   function closeAuth() { modal.hidden = true; }
@@ -53,6 +56,7 @@
       (handle ? '<a role="menuitem" href="https://guides.trujillomingorance.com/u/@' + encodeURIComponent(handle) + '">' + T('menu_profile') + '</a>' : '') +
       '<a role="menuitem" href="https://guides.trujillomingorance.com/settings">' + T('menu_settings') + '</a>' +
       '<a role="menuitem" href="https://guides.trujillomingorance.com/achievements">' + T('menu_ach') + '</a>' +
+      (me.role === 'internal' ? '<a role="menuitem" href="https://guides.trujillomingorance.com/admin">' + T('menu_admin') + '</a>' : '') +
       '<a role="menuitem" href="https://trujillomingorance.com/">trujillomingorance.com</a>' +
       '<button type="button" role="menuitem" data-logout>' + T('menu_logout') + '</button></div></div>';
     $('account-btn').addEventListener('click', function (e) {

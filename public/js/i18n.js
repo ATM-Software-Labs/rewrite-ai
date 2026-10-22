@@ -71,7 +71,7 @@ var D={
 },
 "en": {
 "net_aria": "ATM Software Labs sites",
-"net_guides": "Guides",
+"net_guides": "ATM Docs",
 "net_priv": "Privacy",
 "net_terms": "Terms",
 "net_priv_url": "https://trujillomingorance.com/en/privacy/",
@@ -207,7 +207,7 @@ var D={
 },
 "fr": {
 "net_aria": "Sites d’ATM Software Labs",
-"net_guides": "Guides",
+"net_guides": "ATM Docs",
 "net_priv": "Confidentialité",
 "net_terms": "Conditions",
 "net_priv_url": "https://trujillomingorance.com/en/privacy/",
@@ -483,6 +483,8 @@ function pick(){try{var s=localStorage.getItem('rw_lang');if(D[s])return s;}catc
  var L=(navigator.languages||[navigator.language||'es']);for(var i=0;i<L.length;i++){var c=String(L[i]).slice(0,2).toLowerCase();if(D[c])return c;}return 'es';}
 
 (function(){var K={"es": ["Mi perfil", "Configurar perfil", "Logros"], "en": ["My profile", "Profile settings", "Achievements"], "ca": ["El meu perfil", "Configura el perfil", "Assoliments"], "fr": ["Mon profil", "Paramètres du profil", "Succès"], "de": ["Mein Profil", "Profileinstellungen", "Erfolge"], "it": ["Il mio profilo", "Impostazioni profilo", "Traguardi"], "pt": ["O meu perfil", "Configurar perfil", "Conquistas"]};Object.keys(K).forEach(function(l){if(D[l]){D[l].menu_profile=K[l][0];D[l].menu_settings=K[l][1];D[l].menu_ach=K[l][2];}});})();
+
+(function(){var K={"es": ["Continuar con Microsoft", "Panel interno"], "en": ["Continue with Microsoft", "Internal panel"], "ca": ["Continua amb Microsoft", "Tauler intern"], "fr": ["Continuer avec Microsoft", "Panneau interne"], "de": ["Weiter mit Microsoft", "Interner Bereich"], "it": ["Continua con Microsoft", "Pannello interno"], "pt": ["Continuar com Microsoft", "Painel interno"]};Object.keys(K).forEach(function(l){if(D[l]){D[l].auth_ms=K[l][0];D[l].menu_admin=K[l][1];}});})();
 var lang=pick();
 window.rwT=function(k){return (D[lang]&&D[lang][k])||D.es[k]||k;};
 window.rwLang=function(){return lang;};
