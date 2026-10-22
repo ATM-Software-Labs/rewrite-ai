@@ -1,3 +1,4 @@
+import { corsFor, guard, tooLong, MAX_CHARS } from '../lib/guard.js';
 /**
  * Cloudflare Pages Function: /api/tools
  * Motores especializados de auditoría y optimización de texto
@@ -119,12 +120,14 @@ function safeExtractJson(rawText) {
 export async function onRequestPost(context) {
   const { request, env } = context;
 
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
+  const corsHeaders = corsFor(request, {
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-groq-user-key',
     'Content-Type': 'application/json'
-  };
+  });
+
+  const blocked = guard(request, corsHeaders);
+  if (blocked) return blocked;
 
   try {
     const body = await request.json().catch(() => null);
@@ -149,6 +152,13 @@ export async function onRequestPost(context) {
     if (!text || typeof text !== 'string' || text.trim().length < 5) {
       return new Response(JSON.stringify({ error: 'El texto debe contener al menos 5 caracteres.' }), {
         status: 400,
+        headers: corsHeaders
+      });
+    }
+
+    if (tooLong(text)) {
+      return new Response(JSON.stringify({ error: `El texto es demasiado largo (máximo ${MAX_CHARS} caracteres).` }), {
+        status: 413,
         headers: corsHeaders
       });
     }
@@ -246,13 +256,13 @@ export async function onRequestPost(context) {
   }
 }
 
-export async function onRequestOptions() {
+export async function onRequestOptions({ request }) {
   return new Response(null, {
     status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
+    headers: corsFor(request, {
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-groq-user-key'
-    }
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization, x-groq-user-key',
+      'Access-Control-Max-Age': '86400'
+    })
   });
 }
