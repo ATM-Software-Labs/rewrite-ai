@@ -26,6 +26,18 @@ export async function onRequest({ request, params }) {
   if (action === 'x' && request.method === 'GET') {
     return Response.redirect(`${GUIDES}/api/auth/x?returnTo=${encodeURIComponent(back)}`, 302);
   }
+  if (action === 'microsoft' && request.method === 'GET') {
+    return Response.redirect(`${GUIDES}/api/auth/microsoft?returnTo=${encodeURIComponent(back)}`, 302);
+  }
+  if (action === 'providers') {
+    try {
+      const up = await fetch(`${GUIDES}/api/auth/providers`, { headers: { Accept: 'application/json' } });
+      const d = await up.json();
+      return new Response(JSON.stringify({ microsoft: !!d.microsoft }), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'public, max-age=60' } });
+    } catch (_) {
+      return new Response(JSON.stringify({ microsoft: false }), { headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
+    }
+  }
   if (action === 'google' && request.method === 'GET') {
     return Response.redirect(`${AI}/login?redirect_to=${encodeURIComponent(back)}`, 302);
   }
