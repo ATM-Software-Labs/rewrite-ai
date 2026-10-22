@@ -31,9 +31,9 @@
 ## Funciones
 
 - **Reescribir:** cuatro estilos (Natural, Académico, Sencillo y Resumen ejecutivo). Mantiene cifras, nombres, enlaces y Markdown. Si el resultado sale demasiado corto (menos del 85 % de las palabras), se regenera una vez con una instrucción más firme.
-- **Corregir:** ortografía, gramática y estilo. Los textos de hasta 300 palabras usan un modelo pequeño y rápido.
+- **Corregir:** ortografía, gramática y estilo. Los textos de hasta 300 palabras usan un modelo pequeño y rápido (GPT-OSS 20B en Groq).
 - **Traducir:** español, inglés, catalán, francés, alemán, italiano y portugués.
-- **Herramientas extra:** Tono, Hooks, Coherencia y Auditoría del texto (necesitan una clave de Groq en el servidor; si no la hay, se usa el servicio de IA de trujillomingorance.com).
+- **Herramientas extra:** Tono, Hooks, Coherencia y Auditoría del texto (usan Groq; si falla, se usa el servicio de IA de trujillomingorance.com).
 - **Streaming:** el resultado aparece mientras se genera (SSE).
 - **Cambios en el estilo:** panel calculado en tu navegador que compara el original con el resultado (longitud, frases y variedad).
 - **Interfaz en 7 idiomas** con banderas SVG propias (Windows no pinta los emoji de bandera). Recuerda el idioma elegido.
@@ -49,7 +49,7 @@ Revisa siempre el resultado antes de usarlo. No está pensado para ocultar la au
 | Frontend | HTML, CSS y JavaScript sin framework ni paso de build (`public/`) |
 | Hosting | **Cloudflare Pages** (estáticos + cabeceras en `_headers`) |
 | API | **Cloudflare Pages Functions** (`functions/`), solo en `/api/*` (`_routes.json`) |
-| IA | **Workers AI**: Llama 3.3 70B (reescribir y traducir) y Llama 3.1 8B (correcciones cortas). Groq opcional |
+| IA | **Groq** (principal): GPT-OSS 120B, con GPT-OSS 20B y Qwen3 como respaldo (GPT-OSS 20B para correcciones cortas). **Workers AI** (Llama 3.3 70B / 3.1 8B) solo como último recurso |
 | Sesión | Cookie compartida en `.trujillomingorance.com`, verificada por el servicio de sesión común |
 
 ## Arquitectura
@@ -60,15 +60,15 @@ flowchart LR
   subgraph Cloudflare
     P["Pages<br/>HTML · CSS · JS"]
     F["Functions /api/*<br/>origen · tamaño · ritmo"]
-    AI["Workers AI<br/>Llama 3.3 70B · 3.1 8B"]
+    AI["Workers AI (último recurso)<br/>Llama 3.3 70B · 3.1 8B"]
   end
   S["Servicio de sesión común<br/>*.trujillomingorance.com"]
-  G["Groq (opcional)"]
+  G["Groq (principal)<br/>GPT-OSS 120B · 20B · Qwen3"]
 
   U -->|estáticos| P
   U -->|/api/rewrite (SSE)| F
-  F --> AI
-  F -.->|si hay GROQ_API_KEY| G
+  F -->|GROQ_API_KEY| G
+  F -.->|si Groq falla| AI
   U -->|/api/auth/me| F
   F -->|solo si hay cookie| S
 ```
@@ -115,11 +115,11 @@ El proyecto de Cloudflare Pages `rewrite-ai` está conectado a GitHub: cada push
 
 | Nombre | Tipo | Uso |
 |---|---|---|
-| `AI` | binding Workers AI | Modelos de texto |
+| `AI` | binding Workers AI | Respaldo de último recurso |
 | `BOT_MEMORY` | binding KV | Reservado (compartido con el resto de webs) |
-| `DEFAULT_MODEL` | variable | Modelo principal (por defecto Llama 3.3 70B) |
+| `DEFAULT_MODEL` | variable | Modelo de Workers AI para el respaldo (por defecto Llama 3.3 70B) |
 | `ENVIRONMENT` | variable | `production` |
-| `GROQ_API_KEY` | secreto, opcional | Activa Groq para reescribir y las herramientas extra |
+| `GROQ_API_KEY` | secreto | Proveedor principal (Groq) para reescribir, corregir, traducir y las herramientas extra |
 
 ## Estructura
 

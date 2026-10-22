@@ -24,14 +24,24 @@ const BANNED_AI_WORDS_ES = [
 ];
 
 // Groq Model Fallback Ladder (Fastest & highest entropy first)
+// Solo modelos disponibles para la clave de Groq (GET /openai/v1/models, oct 2026).
+// Workers AI queda como último recurso para no gastar la cuota de Cloudflare.
 const GROQ_MODEL_LADDER = [
-  'llama-3.3-70b-versatile',
   'openai/gpt-oss-120b',
-  'qwen-2.5-32b',
-  'llama-3.1-8b-instant',
   'openai/gpt-oss-20b',
-  'mixtral-8x7b-32768'
+  'qwen/qwen3.8-27b'
 ];
+// Modelo pequeño y barato para correcciones cortas
+const GROQ_FAST_MODEL = 'openai/gpt-oss-20b';
+
+// gpt-oss y qwen3 son modelos de razonamiento: ocultamos el razonamiento para recibir solo el texto
+// El razonamiento consume max_tokens, así que se suma un margen para que no se quede sin texto
+function groqReasoningOpts(model, maxTokens) {
+  if (model.startsWith('openai/gpt-oss')) return { reasoning_format: 'hidden', reasoning_effort: 'low', max_tokens: maxTokens + 1024 };
+  if (model.startsWith('qwen/')) return { reasoning_format: 'hidden', max_tokens: maxTokens + 1024 };
+  return { max_tokens: maxTokens };
+}
+
 
 function detectTextLanguage(text) {
   if (!text) return 'es';
@@ -121,8 +131,24 @@ export async function onRequestPost(context) {
 
     const effectiveGroqKey = apiKey || env.GROQ_API_KEY || '';
 
+    // Groq primero (si hay clave) con su escalera de modelos; Workers AI solo como último recurso
+    const groqModel = model || ((mode === 'corrector' && wordCount <= 300) ? GROQ_FAST_MODEL : '');
+
     // --- STREAMING MODE (SSE) ---
-    if (stream && env.AI && !(provider === 'groq' && (apiKey || env.GROQ_API_KEY))) {
+    if (stream && provider === 'groq' && effectiveGroqKey) {
+      try {
+        return await callGroqStream(userPrompt, systemPrompt, effectiveGroqKey, groqModel, text, temperature, maxTokens, corsFor(request));
+      } catch (streamErr) {
+        console.error('Groq stream failed, falling back:', streamErr);
+        try {
+          const groqRes = await callGroqWithLadder(userPrompt, systemPrompt, effectiveGroqKey, groqModel, temperature, maxTokens);
+          return sseFromText(stripMarkdown(cleanModelOutput(groqRes.text)), `Groq LPU (${groqRes.model})`, corsFor(request));
+        } catch (ladderErr) {
+          console.error('Groq ladder failed, using Workers AI:', ladderErr);
+        }
+      }
+    }
+    if (stream && env.AI) {
       try {
         const msgs = [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }];
         const aiStream = await env.AI.run(cfModel, { messages: msgs, temperature, top_p: 0.95, max_tokens: maxTokens, stream: true });
@@ -143,26 +169,23 @@ export async function onRequestPost(context) {
         console.error('Workers AI stream failed, falling back:', e);
       }
     }
-    if (stream) {
-      if (provider === 'groq' && effectiveGroqKey) {
-        try {
-          const streamResponse = await callGroqStream(userPrompt, systemPrompt, effectiveGroqKey, model, text);
-          return streamResponse;
-        } catch (streamErr) {
-          // Fallback to non-streaming if stream fails
-          console.error('Groq stream failed, falling back to synchronous:', streamErr);
-        }
-      }
-    }
-
     // --- SYNCHRONOUS MODE ---
     let humanizedText = '';
     let usedProvider = provider;
 
+    let groqFailed = false;
     if (provider === 'groq' && effectiveGroqKey) {
-      const groqRes = await callGroqWithLadder(userPrompt, systemPrompt, effectiveGroqKey, model);
-      humanizedText = groqRes.text;
-      usedProvider = `Groq LPU (${groqRes.model})`;
+      try {
+        const groqRes = await callGroqWithLadder(userPrompt, systemPrompt, effectiveGroqKey, groqModel, temperature, maxTokens);
+        humanizedText = groqRes.text;
+        usedProvider = `Groq LPU (${groqRes.model})`;
+      } catch (groqErr) {
+        console.error('Groq ladder failed, using Workers AI:', groqErr);
+        groqFailed = true;
+      }
+    }
+    if (humanizedText) {
+      // Groq respondió
     } else if (provider === 'openai' && apiKey) {
       humanizedText = await callOpenAI(userPrompt, systemPrompt, apiKey, model || 'gpt-4o-mini');
       usedProvider = 'OpenAI';
@@ -191,8 +214,8 @@ export async function onRequestPost(context) {
       }
       humanizedText = aiResponse.response || aiResponse.text || '';
       usedProvider = `Cloudflare Workers AI (${modelName})`;
-    } else if (effectiveGroqKey) {
-      const groqRes = await callGroqWithLadder(userPrompt, systemPrompt, effectiveGroqKey, model);
+    } else if (effectiveGroqKey && !groqFailed) {
+      const groqRes = await callGroqWithLadder(userPrompt, systemPrompt, effectiveGroqKey, groqModel, temperature, maxTokens);
       humanizedText = groqRes.text;
       usedProvider = `Groq LPU (${groqRes.model})`;
     } else {
@@ -349,7 +372,7 @@ REGLAS INQUEBRANTABLES:
 - Devuelve únicamente el texto final reescrito, sin saludos ni aclaraciones previas o posteriores.` + presetRule + buildStyleBlock(styleGuide, calibration);
 }
 
-async function callGroqWithLadder(prompt, systemPrompt, apiKey, requestedModel) {
+async function callGroqWithLadder(prompt, systemPrompt, apiKey, requestedModel, temperature = 0.85, maxTokens = 3500) {
   const ladder = requestedModel 
     ? [requestedModel, ...GROQ_MODEL_LADDER.filter(m => m !== requestedModel)]
     : GROQ_MODEL_LADDER;
@@ -364,11 +387,11 @@ async function callGroqWithLadder(prompt, systemPrompt, apiKey, requestedModel) 
           { role: 'system', content: systemPrompt },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.85,
+        temperature,
         top_p: 0.94,
         presence_penalty: 0.45,
         frequency_penalty: 0.35,
-        max_tokens: 3500
+        ...groqReasoningOpts(modelToTry, maxTokens)
       };
 
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -398,20 +421,20 @@ async function callGroqWithLadder(prompt, systemPrompt, apiKey, requestedModel) 
   throw lastError || new Error('All Groq models failed in fallback ladder.');
 }
 
-async function callGroqStream(prompt, systemPrompt, apiKey, requestedModel, originalText) {
-  const modelToUse = requestedModel || 'llama-3.3-70b-versatile';
+async function callGroqStream(prompt, systemPrompt, apiKey, requestedModel, originalText, temperature = 0.85, maxTokens = 3500, extraHeaders = {}) {
+  const modelToUse = requestedModel || GROQ_MODEL_LADDER[0];
   const payload = {
     model: modelToUse,
     messages: [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: prompt }
     ],
-    temperature: 0.85,
+    temperature,
     top_p: 0.94,
     presence_penalty: 0.45,
     frequency_penalty: 0.35,
-    max_tokens: 3500,
-    stream: true
+    stream: true,
+    ...groqReasoningOpts(modelToUse, maxTokens)
   };
 
   const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -431,11 +454,21 @@ async function callGroqStream(prompt, systemPrompt, apiKey, requestedModel, orig
   const encoder = new TextEncoder();
   const decoder = new TextDecoder();
   let fullAccumulated = '';
+  let buf = '';
+  let finished = false;
+
+  const finish = (controller) => {
+    if (finished) return;
+    finished = true;
+    controller.enqueue(encoder.encode(`data: ${doneEvent(fullAccumulated, originalText, `Groq LPU (${modelToUse})`)}\n\n`));
+    controller.enqueue(encoder.encode('data: [DONE]\n\n'));
+  };
 
   const transformStream = new TransformStream({
     transform(chunk, controller) {
-      const chunkStr = decoder.decode(chunk, { stream: true });
-      const lines = chunkStr.split('\n');
+      buf += decoder.decode(chunk, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
 
       for (const line of lines) {
         const trimmed = line.trim();
@@ -443,25 +476,8 @@ async function callGroqStream(prompt, systemPrompt, apiKey, requestedModel, orig
         const dataStr = trimmed.slice(5).trim();
 
         if (dataStr === '[DONE]') {
-          const cleaned = stripMarkdown(cleanModelOutput(fullAccumulated));
-          const origM = calculateMetrics(originalText);
-          const humM = calculateMetrics(cleaned);
-          const donePayload = JSON.stringify({
-            done: true,
-            provider: `Groq LPU (${modelToUse})`,
-            text: cleaned,
-            metrics: {
-              original: origM,
-              humanized: humM,
-              aiScoreEstimate: {
-                originalAiProb: Math.min(99, Math.max(75, Math.round(100 - origM.burstiness * 1.1))),
-                humanizedAiProb: Math.max(0, Math.min(1, Math.round(1 - (humM.burstiness / 60))))
-              }
-            }
-          });
-          controller.enqueue(encoder.encode(`data: ${donePayload}\n\n`));
-          controller.enqueue(encoder.encode('data: [DONE]\n\n'));
-          return;
+          finish(controller);
+          continue;
         }
 
         try {
@@ -473,15 +489,46 @@ async function callGroqStream(prompt, systemPrompt, apiKey, requestedModel, orig
           }
         } catch (e) {}
       }
+    },
+    flush(controller) {
+      finish(controller);
     }
   });
 
   return new Response(groqRes.body.pipeThrough(transformStream), {
     headers: {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive'
+      'Content-Type': 'text/event-stream; charset=utf-8',
+      'Cache-Control': 'no-store',
+      'X-Accel-Buffering': 'no',
+      ...extraHeaders
     }
+  });
+}
+
+function doneEvent(rawText, originalText, provider) {
+  const cleaned = stripMarkdown(cleanModelOutput(rawText));
+  const origM = calculateMetrics(originalText);
+  const humM = calculateMetrics(cleaned);
+  return JSON.stringify({
+    done: true,
+    provider,
+    text: cleaned,
+    metrics: {
+      original: origM,
+      humanized: humM,
+      aiScoreEstimate: {
+        originalAiProb: Math.min(99, Math.max(75, Math.round(100 - origM.burstiness * 1.1))),
+        humanizedAiProb: Math.max(0, Math.min(1, Math.round(1 - (humM.burstiness / 60))))
+      }
+    }
+  });
+}
+
+// Respuesta SSE de un solo bloque (cuando el stream de Groq falla y usamos la escalera síncrona)
+function sseFromText(text, provider, extraHeaders = {}) {
+  const body = `data: ${JSON.stringify({ chunk: text })}\n\ndata: ${JSON.stringify({ done: true, provider, text })}\n\ndata: [DONE]\n\n`;
+  return new Response(body, {
+    headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-store', ...extraHeaders }
   });
 }
 

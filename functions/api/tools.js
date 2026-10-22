@@ -179,11 +179,11 @@ export async function onRequestPost(context) {
 
     const modelsToTry = [
       model,
-      'llama-3.3-70b-versatile',
+      // Solo modelos disponibles para la clave de Groq (GET /openai/v1/models)
       'openai/gpt-oss-120b',
-      'llama-3.1-8b-instant',
-      'openai/gpt-oss-20b'
-    ].filter(Boolean);
+      'openai/gpt-oss-20b',
+      'qwen/qwen3.8-27b'
+    ].filter((m, i, a) => m && a.indexOf(m) === i);
 
     const attemptErrors = [];
     let resultJson = null;
@@ -205,6 +205,8 @@ export async function onRequestPost(context) {
         if (modelCandidate.includes('gpt-oss')) {
           payload.reasoning_format = 'hidden';
           payload.reasoning_effort = 'low';
+        } else if (modelCandidate.startsWith('qwen/')) {
+          payload.reasoning_format = 'hidden';
         }
 
         const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
