@@ -5,6 +5,8 @@
  * Style.md calibration + sentence-level burstiness
  */
 
+import { corsFor, guard, tooLong, MAX_CHARS } from '../lib/guard.js';
+
 const BANNED_AI_WORDS_EN = [
   'delve', 'testament', 'tapestry', 'beacon', 'multifaceted', 'crucial', 
   'paramount', 'realm', 'moreover', 'furthermore', 'in conclusion', 'embark', 
@@ -65,12 +67,14 @@ function detectTextLanguage(text) {
 export async function onRequestPost(context) {
   const { request, env } = context;
 
-  const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
+  const corsHeaders = corsFor(request, {
     'Access-Control-Allow-Methods': 'POST, OPTIONS',
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Content-Type': 'application/json'
-  };
+  });
+
+  const blocked = guard(request, corsHeaders);
+  if (blocked) return blocked;
 
   try {
     const body = await request.json();
@@ -92,6 +96,12 @@ export async function onRequestPost(context) {
     if (!text || text.trim().length < 5) {
       return new Response(JSON.stringify({ error: 'El texto debe contener al menos 5 caracteres.' }), {
         status: 400,
+        headers: corsHeaders
+      });
+    }
+    if (tooLong(text)) {
+      return new Response(JSON.stringify({ error: `El texto es demasiado largo (máximo ${MAX_CHARS} caracteres).` }), {
+        status: 413,
         headers: corsHeaders
       });
     }
@@ -127,7 +137,7 @@ export async function onRequestPost(context) {
           return env.AI.run(cfModel, { messages: msgs.concat([{ role: 'user', content: fix }]), temperature: 0.7, top_p: 0.95, max_tokens: Math.min(3500, Math.ceil(inWords * 2.6) + 60), stream: true });
         } : null;
         return new Response(workersAiToSse(aiStream, cfModel, retry ? { minWords: Math.round(inWords * 0.85), retry } : null), {
-          headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no', 'Access-Control-Allow-Origin': '*' }
+          headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no', ...corsFor(request) }
         });
       } catch (e) {
         console.error('Workers AI stream failed, falling back:', e);
@@ -221,14 +231,14 @@ export async function onRequestPost(context) {
   }
 }
 
-export async function onRequestOptions() {
+export async function onRequestOptions({ request }) {
   return new Response(null, {
     status: 204,
-    headers: {
-      'Access-Control-Allow-Origin': '*',
+    headers: corsFor(request, {
       'Access-Control-Allow-Methods': 'POST, OPTIONS',
-      'Access-Control-Allow-Headers': 'Content-Type, Authorization'
-    }
+      'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'Access-Control-Max-Age': '86400'
+    })
   });
 }
 
@@ -470,8 +480,7 @@ async function callGroqStream(prompt, systemPrompt, apiKey, requestedModel, orig
     headers: {
       'Content-Type': 'text/event-stream',
       'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive',
-      'Access-Control-Allow-Origin': '*'
+      'Connection': 'keep-alive'
     }
   });
 }

@@ -42,6 +42,12 @@ export async function onRequest({ request, params }) {
     return Response.redirect(`${AI}/login?redirect_to=${encodeURIComponent(back)}`, 302);
   }
 
+  // Sin cookie de sesión ni Authorization no hay nada que comprobar: responder aquí y ahorrar
+  // la subpetición (y la invocación) del servicio de sesión común en cada visita anónima.
+  if (action === 'me' && !/(?:^|;\s*)(?:ta_session|atm_session|session_token|auth_token)=/.test(request.headers.get('Cookie') || '') && !request.headers.get('Authorization')) {
+    return new Response(JSON.stringify({ authenticated: false, user: null }), { status: 200, headers: { 'Content-Type': 'application/json', ...NO_STORE } });
+  }
+
   if (action === 'me' || action === 'logout') {
     const headers = new Headers({ 'Accept': 'application/json' });
     const cookie = request.headers.get('Cookie');

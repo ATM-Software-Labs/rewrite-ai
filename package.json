@@ -5,7 +5,8 @@
   "main": "public/index.html",
   "scripts": {
     "dev": "wrangler pages dev public --compatibility-date=2026-08-16",
-    "deploy": "wrangler pages deploy public --project-name=rewrite-ai"
+    "deploy": "wrangler pages deploy public --project-name=rewrite-ai",
+    "test": "node --test tests/"
   },
   "keywords": [
     "ai-humanizer",
