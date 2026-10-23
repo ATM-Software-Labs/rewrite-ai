@@ -1,0 +1,20 @@
+# Dependabot: revisión semanal (lunes 07:00 Madrid).
+# Menores y parches en un solo PR por ecosistema; las mayores van en PR aparte.
+# Nada se fusiona solo: Alberto aprueba cada actualización.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: "/"
+    schedule:
+      interval: weekly
+      day: monday
+      time: "07:00"
+      timezone: Europe/Madrid
+    open-pull-requests-limit: 5
+    labels:
+      - dependencies
+    groups:
+      npm-minor-and-patch:
+        update-types:
+          - minor
+          - patch
