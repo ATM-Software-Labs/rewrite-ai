@@ -19,6 +19,6 @@
     "cloudflare-workers",
     "groq-lpu"
   ],
-  "author": "Alberto Trujillo Mingorance <atrumin16@gmail.com> (https://trujillomingorance.com)",
+  "author": "Alberto Trujillo Mingorance <alberto@trujillomingorance.com> (https://trujillomingorance.com)",
   "license": "MIT"
 }
