@@ -20,7 +20,8 @@ const BANNED_AI_WORDS_ES = [
   'es fundamental destacar', 'cabe señalar', 'desempeña un papel', 'a fin de cuentas', 
   'por consiguiente', 'un sinfín de', 'no solo', 'sino también', 'vital', 'primordial',
   'en este sentido', 'vale la pena señalar', 'en el ámbito de', 'un abanico de',
-  'en resumen', 'es de vital importancia', 'cobra especial relevancia', 'sentar las bases'
+  'en resumen', 'es de vital importancia', 'cobra especial relevancia', 'sentar las bases',
+  'desglose geográfico', 'vaivenes', 'fuentes de ingresos diversificadas', 'verdaderas corporaciones'
 ];
 
 // Groq Model Fallback Ladder (Fastest & highest entropy first)
@@ -127,7 +128,7 @@ export async function onRequestPost(context) {
     const cfModel = (mode === 'corrector' && wordCount <= 300) ? '@cf/meta/llama-3.1-8b-instruct-fast' : (env.DEFAULT_MODEL || '@cf/meta/llama-3.3-70b-instruct-fp8-fast');
     // Tope de tokens proporcional al texto (≈2 tokens por palabra +20 % de margen) para que Reescribir no se alargue
     const maxTokens = mode === 'stealth' ? Math.min(3500, Math.max(160, Math.ceil(wordCount * 2.0 * 1.2) + 40)) : 3500;
-    const temperature = mode === 'corrector' ? 0.3 : mode === 'translate' ? 0.4 : 0.7;
+    const temperature = mode === 'corrector' ? 0.3 : mode === 'translate' ? 0.4 : 0.82;
 
     const effectiveGroqKey = apiKey || env.GROQ_API_KEY || '';
 
@@ -387,10 +388,10 @@ async function callGroqWithLadder(prompt, systemPrompt, apiKey, requestedModel, 
           { role: 'system', content: systemPrompt },
           { role: 'user', content: prompt }
         ],
-        temperature,
+        temperature: 0.82,
         top_p: 0.92,
-        presence_penalty: 0.15,
-        frequency_penalty: 0.20,
+        presence_penalty: 0.25,
+        frequency_penalty: 0.35,
         ...groqReasoningOpts(modelToTry, maxTokens)
       };
 
@@ -421,7 +422,7 @@ async function callGroqWithLadder(prompt, systemPrompt, apiKey, requestedModel, 
   throw lastError || new Error('All Groq models failed in fallback ladder.');
 }
 
-async function callGroqStream(prompt, systemPrompt, apiKey, requestedModel, originalText, temperature = 0.7, maxTokens = 3500, extraHeaders = {}) {
+async function callGroqStream(prompt, systemPrompt, apiKey, requestedModel, originalText, temperature = 0.82, maxTokens = 3500, extraHeaders = {}) {
   const modelToUse = requestedModel || GROQ_MODEL_LADDER[0];
   const payload = {
     model: modelToUse,
@@ -429,10 +430,10 @@ async function callGroqStream(prompt, systemPrompt, apiKey, requestedModel, orig
       { role: 'system', content: systemPrompt },
       { role: 'user', content: prompt }
     ],
-    temperature,
+    temperature: 0.82,
     top_p: 0.92,
-    presence_penalty: 0.15,
-    frequency_penalty: 0.20,
+    presence_penalty: 0.25,
+    frequency_penalty: 0.35,
     stream: true,
     ...groqReasoningOpts(modelToUse, maxTokens)
   };
@@ -598,6 +599,14 @@ function cleanModelOutput(text) {
   if ((cleaned.startsWith('"""') && cleaned.endsWith('"""')) || (cleaned.startsWith("'''") && cleaned.endsWith("'''"))) {
     cleaned = cleaned.slice(3, -3).trim();
   }
+
+  // Semicolons in short text are a major AI detector trigger — replace with period + capital letter or comma
+  cleaned = cleaned.replace(/;\s*([a-zñáéíóú])/g, (m, c) => '. ' + c.toUpperCase());
+  cleaned = cleaned.replace(/;\s*/g, '. ');
+
+  // Remove air quotes around single words (e.g. "multinacional" -> multinacional)
+  cleaned = cleaned.replace(/[“"']([a-záéíóúñA-ZÁÉÍÓÚÑ\-]{3,25})[”"']/g, '$1');
+
   return cleaned.trim();
 }
 
@@ -658,18 +667,21 @@ function buildPrompts(mode, preset, isEnglish, text, styleGuide, calibration) {
       userPrompt: 'Correct this text:\n\n' + text,
     };
     return {
-      systemPrompt: 'You are an expert human writer and editor. Your mission is to rewrite drafts, notes, or AI-generated text into authentic, clear, engaging, and genuinely human prose.\n' +
-        'Rewrite with authentic human flow, not superficial synonym swapping: restructure sentences, eliminate filler words and circumlocutions, and vary cadence naturally.\n' +
-        'Output clean plain text in paragraphs. No Markdown at all: turn headings into natural introductory sentences, turn bullet lists into connected narrative prose, and drop bold/italics or horizontal rules.\n' +
-        'Cut the fluff and synthesize: make the text somewhat more concise and punchy while keeping every fact, figure, percentage, name, and core insight completely accurate. Write in English. Do not invent new claims.\n' +
-        'Avoid stock phrases and robotic markers: "in conclusion", "it is worth noting", "paradox", "crucial", "in today\'s world", "delve", "landscape", "tapestry", "moreover", "furthermore", "not only... but also", "plays a pivotal role", "seamless", "holistic".\n' +
-        'Style: ' + (STYLES_EN[preset] || STYLES_EN.natural) + '\n' +
-        'Return only the rewritten text, no title, no preface, no explanation.' + extra,
-      userPrompt: 'Rewrite the text between <text> and </text> so it reads 100% human, natural, and more concise:\n' +
-        '1. Synthesize and tighten: Cut fluff, repetitive statements, and padding. Make the text punchier and more condensed (around ' + Math.round(wc * 0.70) + '-' + Math.round(wc * 0.85) + ' words; the original has ' + wc + ') while keeping every fact, figure, name, and core insight intact.' + (preset === 'executive' ? ' (Executive Mode: condense into at most 120 words focusing on conclusions and hard facts).' : '') + '\n' +
-        '2. Natural rhythm: Vary cadence organically so it sounds authentic and engaging when read aloud. Avoid formulaic sentence patterns.\n' +
-        '3. Plain text: no **, #, *, bullets, numbering or ---; lists become smooth prose.\n' +
-        '4. Avoid AI clichés: Do not use "delve", "tapestry", "crucial", "testament", "furthermore", "moreover", "in conclusion", "in today\'s world". Keep all figures and names.\n' +
+      systemPrompt: 'You are an authentic, perceptive human writer and editor. Your mission is to rewrite drafts and AI-generated text into genuinely human, organic, and engaging prose, stripping away every hallmark of synthetic AI writing.\n' +
+        'CRITICAL RULES TO ELIMINATE AI DETECTION PATTERNS (GPTZERO / TURNITIN BYPASS):\n' +
+        '1. NO SEMICOLONS (;): Never use semicolons. Break sentences with periods or natural commas. Semicolons are a major trigger for AI classifiers.\n' +
+        '2. NO AIR QUOTES ON SINGLE WORDS: Do not put quotes around words like "multinational" or "essential". Speak with direct confidence.\n' +
+        '3. RADICAL RESTRUCTURING (NO SYNTACTIC MIRRORING): Do not just substitute words sentence-by-sentence. Tear down the original syntactic skeleton. Explain the idea from scratch using fresh sentence openings, different subjects, and natural human cadence. The first sentence MUST NOT begin with the same words or formula as the source.\n' +
+        '4. NO FORMULAIC RELATIVE CLAUSES: Ban textbook tail clauses such as ", which allows for / which protects / which highlights / thereby fostering...". Express outcomes as crisp separate sentences or natural organic conjunctions.\n' +
+        '5. BANNED AI CLICHES: Strictly forbidden: "delve", "tapestry", "testament", "beacon", "crucial", "paramount", "realm", "moreover", "furthermore", "in conclusion", "it is worth noting", "in today\'s world", "not only... but also", "plays a pivotal role", "seamless", "holistic", "navigating the landscape".\n' +
+        '6. ORGANIC HUMAN VOICE: Write like an insightful human talking to another with clarity and sharp substance. Alternate brief 4-7 word punchy statements with smooth explanations. Use real human connectors (yet, but, however, so, in fact, still).\n' +
+        '7. CONCISE & PUNCHY: Keep it tighter and more condensed (around 70% to 85% of original length), preserving all hard facts, figures, and names.\n' +
+        '8. Output only the rewritten prose in clean paragraphs, with no title, preface, quotes, or commentary.' + extra,
+      userPrompt: 'Thoroughly rewrite the text between <text> and </text> so it reads 100% human and natural, breaking all AI syntactic predictability:\n' +
+        '1. Total restructure: Do not mirror the original sentence blueprint. Explain the core message with fresh phrasing and new sentence starts. Never begin the first sentence like the source.\n' +
+        '2. Zero AI signatures: No semicolons (;), no air quotes, and no formulaic clauses like ", which protects/allows...".\n' +
+        '3. No clichés: Avoid "delve", "tapestry", "crucial", "furthermore", "in conclusion", "in today\'s world". Keep all figures and names intact.\n' +
+        '4. Conciseness: ' + (preset === 'executive' ? 'At most 120 words.' : 'Around ' + Math.round(wc * 0.70) + '-' + Math.round(wc * 0.85) + ' words (original has ' + wc + '), punchy and fluff-free.') + '\n' +
         '5. ' + (STYLES_EN[preset] || STYLES_EN.natural) + '\n\n<text>\n' + text + '\n</text>',
     };
   }
@@ -678,18 +690,21 @@ function buildPrompts(mode, preset, isEnglish, text, styleGuide, calibration) {
     userPrompt: 'Corrige este texto:\n\n' + text,
   };
   return {
-    systemPrompt: 'Eres un editor y redactor humano de primer nivel. Tu objetivo es transformar borradores, notas o textos generados por IA en prosa auténtica, viva, fluida y agradable de leer, con voz humana real.\n' +
-      'Reescribe a fondo con naturalidad, no te limites a cambiar sinónimos: reestructura las oraciones, poda la verborrea, las redundancias y los rodeos innecesarios, y usa conectores naturales y cotidianos (pero, sin embargo, por eso, así que, además, de hecho, al fin y al cabo).\n' +
-      'Devuelve texto plano limpio en párrafos. Nada de Markdown: convierte cada título en una frase de apertura natural del párrafo, convierte las listas en prosa enlazada y elimina negritas, cursivas y separadores (**, ###, *, ---).\n' +
-      'Sintetiza y ve al grano: haz que el texto quede un poco más resumido y ágil, pero conservando rigurosamente todos los datos, cifras, porcentajes, nombres y el mensaje central. Escribe en español. No inventes afirmaciones nuevas.\n' +
-      'Evita muletillas y clichés de IA: "en resumen", "en conclusión", "cabe destacar", "es importante señalar", "paradoja", "crucial", "fundamental", "en un mundo", "en el panorama actual", "a día de hoy", "no solo... sino también", "un tapiz", "desempeña un papel", "un sinfín de", "adentrarse en". Evita conclusiones artificiales.\n' +
-      'Estilo: ' + (STYLES_ES[preset] || STYLES_ES.natural) + '\n' +
-      'Devuelve únicamente el texto reescrito, sin título, sin introducción y sin explicaciones.' + extra,
-    userPrompt: 'Reescribe el texto entre <texto> y </texto> para que suene 100 % humano, natural y un poco más resumido:\n' +
-      '1. Síntesis y concisión: Poda el relleno, las vueltas y las redundancias. Condensa el mensaje para que quede más directo y ágil (en torno a ' + Math.round(wc * 0.70) + '-' + Math.round(wc * 0.85) + ' palabras; el original tiene ' + wc + '), manteniendo todos los datos, cifras, nombres y argumentos centrales.' + (preset === 'executive' ? ' (Modo Resumen Ejecutivo: sintetiza en como máximo 120 palabras los puntos clave y conclusiones).' : '') + '\n' +
-      '2. Ritmo humano: Varía la cadencia de forma natural y fluida, como quien habla o redacta con soltura, sin frases forzadas ni estructuras mecánicas.\n' +
-      '3. Texto plano: sin **, #, *, viñetas, numeración ni ---. Las listas se cuentan como prosa enlazada.\n' +
-      '4. Sin muletillas de IA: No uses "cabe destacar", "es fundamental", "crucial", "en resumen", "en conclusión", "en el panorama actual", "a día de hoy", "no solo... sino también", "un tapiz". Mantén todas las cifras y nombres.\n' +
+    systemPrompt: 'Eres un redactor y analista humano con voz propia, natural, asimétrica y con criterio real. Tu objetivo es transformar borradores y textos generados por IA en prosa 100 % humana, viva y creíble, eliminando cualquier rastro de redacción sintética.\n' +
+      'REGLAS DE ORO ANTI-DETECCIÓN DE IA (BYPASS GPTZERO / COPYLEAKS):\n' +
+      '1. PROHIBIDO EL PUNTO Y COMA (;): Jamás uses punto y coma. Usa puntos y seguido o comas naturales. El punto y coma en textos breves es un delator automático de IA.\n' +
+      '2. PROHIBIDAS LAS COMILLAS EN PALABRAS SUELTAS: Escribe con seguridad directa, sin entrecomillar términos como "multinacional", "revolucionario" o "experto".\n' +
+      '3. PROHIBIDO EL CALCO SINTÁCTICO (REESTRUCTURA DE RAÍZ): No hagas una sustitución de sinónimos frase a frase. Desmonta las oraciones originales y vuelve a explicar las ideas con tus propias palabras y otra construcción sintáctica. La primera frase NUNCA debe empezar igual que el original.\n' +
+      '4. PROHIBIDAS LAS CLÁUSULAS DE CONSECUENCIA DE MANUAL: Evita fórmulas típicas como ", lo que permite/protege/facilita/garantiza..." o ", sentando las bases de...". Exprésalo como oraciones independientes o consecuencias directas y naturales.\n' +
+      '5. LISTA NEGRA ESTRICTA DE CLICHÉS Y JERGA DE IA: Prohibido usar: "desglose geográfico", "vaivenes", "en este sentido", "cabe destacar", "es fundamental", "crucial", "en resumen", "en conclusión", "un tapiz", "en el panorama actual", "a día de hoy", "no solo... sino también", "fuentes de ingresos diversificadas", "desempeña un papel", "un sinfín de", "adentrarse en", "un abanico de posibilidades", "es menester", "verdaderas corporaciones".\n' +
+      '6. VOZ HUMANA Y PERPLEJIDAD ORGÁNICA: Escribe con el tono de una persona real explicando el concepto a otra con soltura (como en una buena columna o un hilo de análisis). Alterna frases cortas y contundentes con explicaciones fluidas. Usa conectores cotidianos (pero, sin embargo, por eso, así que, además, de hecho, al fin y al cabo).\n' +
+      '7. SÍNTESIS Y SIN PAJA: Haz el texto más ágil y un poco más resumido (en torno al 70-85 % de la longitud del original), manteniendo todos los datos, números y hechos reales.\n' +
+      '8. Devuelve exclusivamente el texto final en párrafos limpios, sin título, sin prefacio y sin comentarios.' + extra,
+    userPrompt: 'Reescribe a fondo el texto entre <texto> y </texto> para que suene 100 % humano y natural, demoliendo cualquier patrón sintáctico de IA:\n' +
+      '1. Reestructuración total: No sigas el orden ni la sintaxis del original. Explica la misma idea con otra estructura y vocabulario propio. La primera frase debe empezar de forma distinta.\n' +
+      '2. Cero firmas de IA: Prohibido usar punto y coma (;), comillas en palabras sueltas, o coletillas como ", lo que protege/permite...".\n' +
+      '3. Sin clichés: No uses "desglose", "vaivenes", "cabe destacar", "es fundamental", "en resumen", "en conclusión", "a día de hoy", "no solo... sino también".\n' +
+      '4. Síntesis: ' + (preset === 'executive' ? 'Máximo 120 palabras.' : 'Alrededor de ' + Math.round(wc * 0.70) + '-' + Math.round(wc * 0.85) + ' palabras (el original tiene ' + wc + '), conciso y sin relleno.') + '\n' +
       '5. ' + (STYLES_ES[preset] || STYLES_ES.natural) + '\n\n<texto>\n' + text + '\n</texto>',
   };
 }
