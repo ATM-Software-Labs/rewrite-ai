@@ -6,23 +6,10 @@
  */
 
 import { corsFor, guard, tooLong, MAX_CHARS } from '../lib/guard.js';
+import { BANNED_PHRASES_ES, BANNED_PHRASES_EN, sanitizeText } from '../lib/aiDictionary.js';
 
-const BANNED_AI_WORDS_EN = [
-  'delve', 'testament', 'tapestry', 'beacon', 'multifaceted', 'crucial', 
-  'paramount', 'realm', 'moreover', 'furthermore', 'in conclusion', 'embark', 
-  'pivotal', 'underscores', 'encompasses', 'vibrant', 'notably', 'it is important to note',
-  'seamless', 'fostering', 'holistic', 'interplay', 'cornerstone', 'in today\'s fast-paced world',
-  'navigating the landscape', 'plays a crucial role', 'shedding light'
-];
-
-const BANNED_AI_WORDS_ES = [
-  'sumergirse', 'tapiz', 'testimonio', 'crucial', 'en conclusión', 
-  'es fundamental destacar', 'cabe señalar', 'desempeña un papel', 'a fin de cuentas', 
-  'por consiguiente', 'un sinfín de', 'no solo', 'sino también', 'vital', 'primordial',
-  'en este sentido', 'vale la pena señalar', 'en el ámbito de', 'un abanico de',
-  'en resumen', 'es de vital importancia', 'cobra especial relevancia', 'sentar las bases',
-  'desglose geográfico', 'vaivenes', 'fuentes de ingresos diversificadas', 'verdaderas corporaciones'
-];
+const BANNED_AI_WORDS_EN = BANNED_PHRASES_EN;
+const BANNED_AI_WORDS_ES = BANNED_PHRASES_ES;
 
 // Groq Model Fallback Ladder (Fastest & highest entropy first)
 // Solo modelos disponibles para la clave de Groq (GET /openai/v1/models, oct 2026).
@@ -128,7 +115,7 @@ export async function onRequestPost(context) {
     const cfModel = (mode === 'corrector' && wordCount <= 300) ? '@cf/meta/llama-3.1-8b-instruct-fast' : (env.DEFAULT_MODEL || '@cf/meta/llama-3.3-70b-instruct-fp8-fast');
     // Tope de tokens proporcional al texto (≈2 tokens por palabra +20 % de margen) para que Reescribir no se alargue
     const maxTokens = mode === 'stealth' ? Math.min(3500, Math.max(160, Math.ceil(wordCount * 2.0 * 1.2) + 40)) : 3500;
-    const temperature = mode === 'corrector' ? 0.3 : mode === 'translate' ? 0.4 : 0.82;
+    const temperature = mode === 'corrector' ? 0.3 : mode === 'translate' ? 0.4 : 0.88;
 
     const effectiveGroqKey = apiKey || env.GROQ_API_KEY || '';
 
@@ -138,12 +125,12 @@ export async function onRequestPost(context) {
     // --- STREAMING MODE (SSE) ---
     if (stream && provider === 'groq' && effectiveGroqKey) {
       try {
-        return await callGroqStream(userPrompt, systemPrompt, effectiveGroqKey, groqModel, text, temperature, maxTokens, corsFor(request));
+        return await callGroqStream(userPrompt, systemPrompt, effectiveGroqKey, groqModel, text, temperature, maxTokens, corsFor(request), isEnglish);
       } catch (streamErr) {
         console.error('Groq stream failed, falling back:', streamErr);
         try {
           const groqRes = await callGroqWithLadder(userPrompt, systemPrompt, effectiveGroqKey, groqModel, temperature, maxTokens);
-          return sseFromText(stripMarkdown(cleanModelOutput(groqRes.text)), `Groq LPU (${groqRes.model})`, corsFor(request));
+          return sseFromText(stripMarkdown(cleanModelOutput(groqRes.text, isEnglish)), `Groq LPU (${groqRes.model})`, corsFor(request));
         } catch (ladderErr) {
           console.error('Groq ladder failed, using Workers AI:', ladderErr);
         }
@@ -163,7 +150,7 @@ export async function onRequestPost(context) {
             : 'Tu versión tiene solo ' + got + ' palabras y quedó incompleta. Vuelve a reescribir el texto ORIGINAL completo en unas ' + targetWords + ' palabras, conservando todos los datos, cifras e ideas clave de forma natural, concisa y humana. Devuelve solo el texto.';
           return env.AI.run(cfModel, { messages: msgs.concat([{ role: 'user', content: fix }]), temperature: 0.7, top_p: 0.95, max_tokens: Math.min(3500, Math.ceil(inWords * 2.0) + 60), stream: true });
         } : null;
-        return new Response(workersAiToSse(aiStream, cfModel, retry ? { minWords: Math.round(inWords * 0.40), retry } : null), {
+        return new Response(workersAiToSse(aiStream, cfModel, retry ? { minWords: Math.round(inWords * 0.40), retry } : null, isEnglish), {
           headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no', ...corsFor(request) }
         });
       } catch (e) {
@@ -224,7 +211,7 @@ export async function onRequestPost(context) {
       usedProvider = 'Rule-Based Engine (Local)';
     }
 
-    humanizedText = stripMarkdown(cleanModelOutput(humanizedText));
+    humanizedText = stripMarkdown(cleanModelOutput(humanizedText, isEnglish));
 
     const originalMetrics = calculateMetrics(text);
     const humanizedMetrics = calculateMetrics(humanizedText);
@@ -388,10 +375,10 @@ async function callGroqWithLadder(prompt, systemPrompt, apiKey, requestedModel, 
           { role: 'system', content: systemPrompt },
           { role: 'user', content: prompt }
         ],
-        temperature: 0.82,
-        top_p: 0.92,
-        presence_penalty: 0.25,
-        frequency_penalty: 0.35,
+        temperature: 0.88,
+        top_p: 0.94,
+        presence_penalty: 0.35,
+        frequency_penalty: 0.45,
         ...groqReasoningOpts(modelToTry, maxTokens)
       };
 
@@ -422,7 +409,7 @@ async function callGroqWithLadder(prompt, systemPrompt, apiKey, requestedModel, 
   throw lastError || new Error('All Groq models failed in fallback ladder.');
 }
 
-async function callGroqStream(prompt, systemPrompt, apiKey, requestedModel, originalText, temperature = 0.82, maxTokens = 3500, extraHeaders = {}) {
+async function callGroqStream(prompt, systemPrompt, apiKey, requestedModel, originalText, temperature = 0.88, maxTokens = 3500, extraHeaders = {}, isEnglish = false) {
   const modelToUse = requestedModel || GROQ_MODEL_LADDER[0];
   const payload = {
     model: modelToUse,
@@ -430,10 +417,10 @@ async function callGroqStream(prompt, systemPrompt, apiKey, requestedModel, orig
       { role: 'system', content: systemPrompt },
       { role: 'user', content: prompt }
     ],
-    temperature: 0.82,
-    top_p: 0.92,
-    presence_penalty: 0.25,
-    frequency_penalty: 0.35,
+    temperature: 0.88,
+    top_p: 0.94,
+    presence_penalty: 0.35,
+    frequency_penalty: 0.45,
     stream: true,
     ...groqReasoningOpts(modelToUse, maxTokens)
   };
@@ -461,7 +448,7 @@ async function callGroqStream(prompt, systemPrompt, apiKey, requestedModel, orig
   const finish = (controller) => {
     if (finished) return;
     finished = true;
-    controller.enqueue(encoder.encode(`data: ${doneEvent(fullAccumulated, originalText, `Groq LPU (${modelToUse})`)}\n\n`));
+    controller.enqueue(encoder.encode(`data: ${doneEvent(fullAccumulated, originalText, `Groq LPU (${modelToUse})`, isEnglish)}\n\n`));
     controller.enqueue(encoder.encode('data: [DONE]\n\n'));
   };
 
@@ -506,8 +493,8 @@ async function callGroqStream(prompt, systemPrompt, apiKey, requestedModel, orig
   });
 }
 
-function doneEvent(rawText, originalText, provider) {
-  const cleaned = stripMarkdown(cleanModelOutput(rawText));
+function doneEvent(rawText, originalText, provider, isEnglish = false) {
+  const cleaned = stripMarkdown(cleanModelOutput(rawText, isEnglish));
   const origM = calculateMetrics(originalText);
   const humM = calculateMetrics(cleaned);
   return JSON.stringify({
@@ -588,26 +575,8 @@ function fallbackHeuristicHumanizer(text, mode) {
   return processed;
 }
 
-function cleanModelOutput(text) {
-  if (!text) return '';
-  let cleaned = text.trim();
-  
-  // Strip AI preamble lines
-  cleaned = cleaned.replace(/^(?:¡?claro!?|por supuesto|aquí\s+(?:te presento|tienes|está|adjunto)|here\s+(?:is|are)|sure|certainly)[^\n]*?:?\s*(\r?\n)+/i, '');
-  cleaned = cleaned.replace(/^(?:aquí\s+(?:te presento|tienes|está)\s+el\s+texto[^\n]*?:?|versión humanizada:?|here is the (?:humanized|rewritten|proofread)[^\n]*?:?)\s*(\r?\n)*/i, '');
-  
-  if ((cleaned.startsWith('"""') && cleaned.endsWith('"""')) || (cleaned.startsWith("'''") && cleaned.endsWith("'''"))) {
-    cleaned = cleaned.slice(3, -3).trim();
-  }
-
-  // Semicolons in short text are a major AI detector trigger — replace with period + capital letter or comma
-  cleaned = cleaned.replace(/;\s*([a-zñáéíóú])/g, (m, c) => '. ' + c.toUpperCase());
-  cleaned = cleaned.replace(/;\s*/g, '. ');
-
-  // Remove air quotes around single words (e.g. "multinacional" -> multinacional)
-  cleaned = cleaned.replace(/[“"']([a-záéíóúñA-ZÁÉÍÓÚÑ\-]{3,25})[”"']/g, '$1');
-
-  return cleaned.trim();
+function cleanModelOutput(text, isEnglish = false) {
+  return sanitizeText(text, isEnglish);
 }
 
 function calculateMetrics(text) {
@@ -734,7 +703,7 @@ function buildTranslatePrompts(text, target) {
 
 // Convierte el stream SSE de Workers AI ({"response":"..."}) en el formato de la app ({"chunk":"..."}).
 // Con opts.retry: al terminar, si el texto tiene menos de opts.minWords palabras, envía {reset:true} y emite un segundo intento.
-function workersAiToSse(aiStream, model, opts) {
+function workersAiToSse(aiStream, model, opts, isEnglish = false) {
   const enc = new TextEncoder();
   const send = (ctl, obj) => ctl.enqueue(enc.encode('data: ' + JSON.stringify(obj) + '\n\n'));
   async function pump(stream, ctl) {
@@ -762,15 +731,16 @@ function workersAiToSse(aiStream, model, opts) {
   return new ReadableStream({
     async start(ctl) {
       try {
-        const first = await pump(aiStream, ctl);
-        const words = first.trim().split(/\s+/).filter(Boolean).length;
+        let finalAcc = await pump(aiStream, ctl);
+        const words = finalAcc.trim().split(/\s+/).filter(Boolean).length;
         let attempts = 1;
         if (opts && opts.retry && words < opts.minWords) {
           send(ctl, { reset: true, reason: 'length', words });
-          await pump(await opts.retry(words), ctl);
+          finalAcc = await pump(await opts.retry(words), ctl);
           attempts = 2;
         }
-        send(ctl, { done: true, model, attempts });
+        const cleaned = stripMarkdown(cleanModelOutput(finalAcc, isEnglish));
+        send(ctl, { done: true, model, attempts, text: cleaned });
       } catch (e) {
         send(ctl, { error: 'stream' });
       }

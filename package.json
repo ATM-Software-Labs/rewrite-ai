@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "wrangler pages dev public --compatibility-date=2026-08-16",
     "deploy": "wrangler pages deploy public --project-name=rewrite-ai",
-    "test": "node --test tests/"
+    "test": "node --test tests/*.test.js"
   },
   "keywords": [
     "ai-humanizer",
@@ -20,5 +20,6 @@
     "groq-lpu"
   ],
   "author": "Alberto Trujillo Mingorance <alberto@trujillomingorance.com> (https://trujillomingorance.com)",
-  "license": "MIT"
+  "license": "MIT",
+  "type": "module"
 }
