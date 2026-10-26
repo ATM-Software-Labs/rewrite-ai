@@ -127,7 +127,7 @@ export async function onRequestPost(context) {
     const cfModel = (mode === 'corrector' && wordCount <= 300) ? '@cf/meta/llama-3.1-8b-instruct-fast' : (env.DEFAULT_MODEL || '@cf/meta/llama-3.3-70b-instruct-fp8-fast');
     // Tope de tokens proporcional al texto (≈2 tokens por palabra +20 % de margen) para que Reescribir no se alargue
     const maxTokens = mode === 'stealth' ? Math.min(3500, Math.max(160, Math.ceil(wordCount * 2.0 * 1.2) + 40)) : 3500;
-    const temperature = mode === 'corrector' ? 0.3 : mode === 'translate' ? 0.4 : 0.85;
+    const temperature = mode === 'corrector' ? 0.3 : mode === 'translate' ? 0.4 : 0.7;
 
     const effectiveGroqKey = apiKey || env.GROQ_API_KEY || '';
 
@@ -152,17 +152,17 @@ export async function onRequestPost(context) {
       try {
         const msgs = [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }];
         const aiStream = await env.AI.run(cfModel, { messages: msgs, temperature, top_p: 0.95, max_tokens: maxTokens, stream: true });
-        // Reescribir: si sale demasiado corto (<85 % de palabras), se regenera una vez con una instrucción más firme
+        // Reescribir: solo si sale anormalmente truncado (<40 % de palabras), se regenera una vez
         const inWords = text.replace(/[*#>_`-]+/g, ' ').trim().split(/\s+/).filter(Boolean).length;
         const lengthCheck = mode === 'stealth' && stylePreset !== 'executive' && inWords >= 40;
         const retry = lengthCheck ? async (got) => {
-          const lo = Math.round(inWords * 0.9), hi = Math.round(inWords * 1.1);
+          const targetWords = Math.round(inWords * 0.75);
           const fix = isEnglish
-            ? 'Your version has ' + got + ' words: too short, you left ideas out. Rewrite the ORIGINAL text again with between ' + lo + ' and ' + hi + ' words, covering every idea, example and figure in order. Same rules as before. Return only the text.'
-            : 'Tu versión tiene ' + got + ' palabras: es demasiado corta y has omitido ideas. Vuelve a reescribir el texto ORIGINAL con entre ' + lo + ' y ' + hi + ' palabras, recorriendo en orden cada idea, ejemplo y dato. Mismas reglas que antes. Devuelve solo el texto.';
-          return env.AI.run(cfModel, { messages: msgs.concat([{ role: 'user', content: fix }]), temperature: 0.7, top_p: 0.95, max_tokens: Math.min(3500, Math.ceil(inWords * 2.6) + 60), stream: true });
+            ? 'Your version has only ' + got + ' words and was cut off. Rewrite the ORIGINAL text completely in around ' + targetWords + ' words, keeping all facts, figures, and key ideas in a natural, concise human voice. Return only the text.'
+            : 'Tu versión tiene solo ' + got + ' palabras y quedó incompleta. Vuelve a reescribir el texto ORIGINAL completo en unas ' + targetWords + ' palabras, conservando todos los datos, cifras e ideas clave de forma natural, concisa y humana. Devuelve solo el texto.';
+          return env.AI.run(cfModel, { messages: msgs.concat([{ role: 'user', content: fix }]), temperature: 0.7, top_p: 0.95, max_tokens: Math.min(3500, Math.ceil(inWords * 2.0) + 60), stream: true });
         } : null;
-        return new Response(workersAiToSse(aiStream, cfModel, retry ? { minWords: Math.round(inWords * 0.85), retry } : null), {
+        return new Response(workersAiToSse(aiStream, cfModel, retry ? { minWords: Math.round(inWords * 0.40), retry } : null), {
           headers: { 'Content-Type': 'text/event-stream; charset=utf-8', 'Cache-Control': 'no-store', 'X-Accel-Buffering': 'no', ...corsFor(request) }
         });
       } catch (e) {
@@ -198,7 +198,7 @@ export async function onRequestPost(context) {
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt }
           ],
-          temperature: mode === 'corrector' ? 0.3 : 0.85,
+          temperature: mode === 'corrector' ? 0.3 : 0.7,
           top_p: 0.95,
           max_tokens: 3500
         });
@@ -208,7 +208,7 @@ export async function onRequestPost(context) {
             { role: 'system', content: systemPrompt },
             { role: 'user', content: userPrompt }
           ],
-          temperature: mode === 'corrector' ? 0.3 : 0.85,
+          temperature: mode === 'corrector' ? 0.3 : 0.7,
           max_tokens: 3500
         });
       }
@@ -388,9 +388,9 @@ async function callGroqWithLadder(prompt, systemPrompt, apiKey, requestedModel, 
           { role: 'user', content: prompt }
         ],
         temperature,
-        top_p: 0.94,
-        presence_penalty: 0.45,
-        frequency_penalty: 0.35,
+        top_p: 0.92,
+        presence_penalty: 0.15,
+        frequency_penalty: 0.20,
         ...groqReasoningOpts(modelToTry, maxTokens)
       };
 
@@ -421,7 +421,7 @@ async function callGroqWithLadder(prompt, systemPrompt, apiKey, requestedModel, 
   throw lastError || new Error('All Groq models failed in fallback ladder.');
 }
 
-async function callGroqStream(prompt, systemPrompt, apiKey, requestedModel, originalText, temperature = 0.85, maxTokens = 3500, extraHeaders = {}) {
+async function callGroqStream(prompt, systemPrompt, apiKey, requestedModel, originalText, temperature = 0.7, maxTokens = 3500, extraHeaders = {}) {
   const modelToUse = requestedModel || GROQ_MODEL_LADDER[0];
   const payload = {
     model: modelToUse,
@@ -430,9 +430,9 @@ async function callGroqStream(prompt, systemPrompt, apiKey, requestedModel, orig
       { role: 'user', content: prompt }
     ],
     temperature,
-    top_p: 0.94,
-    presence_penalty: 0.45,
-    frequency_penalty: 0.35,
+    top_p: 0.92,
+    presence_penalty: 0.15,
+    frequency_penalty: 0.20,
     stream: true,
     ...groqReasoningOpts(modelToUse, maxTokens)
   };
@@ -545,7 +545,7 @@ async function callOpenAI(prompt, systemPrompt, apiKey, model) {
         { role: 'system', content: systemPrompt },
         { role: 'user', content: prompt }
       ],
-      temperature: 0.85,
+      temperature: 0.7,
       max_tokens: 3500
     })
   });
@@ -637,16 +637,16 @@ function calculateMetrics(text) {
 
 /* ---------- Instrucciones de reescritura (sin objetivos de evasión de detectores) ---------- */
 const STYLES_ES = {
-  natural: 'Tono conversacional pero profesional, como una buena columna de prensa: cercano y claro, con frases muy cortas (de 4 a 8 palabras) que rematen ideas y algún giro coloquial ocasional.',
-  academic: 'Registro académico: preciso, impersonal cuando convenga, con conectores formales (no obstante, por tanto, en la medida en que) y frases más elaboradas, sin jerga vacía.',
-  simple: 'Lenguaje sencillo: frases cortas (menos de 15 palabras), palabras cotidianas y explica entre paréntesis o con un ejemplo cualquier término técnico (refino, tierras raras…). Que lo entienda alguien de 14 años.',
-  executive: 'Resumen ejecutivo: como máximo 120 palabras en 2 o 3 párrafos breves. Primera frase: la conclusión. Después, solo los datos clave. Última frase: qué implica en la práctica.',
+  natural: 'Tono conversacional y humano, como una buena columna divulgativa o artículo de autor: directo, claro y fresco, eliminando rodeos para que el texto sea ágil y resumido sin perder sustancia.',
+  academic: 'Registro académico formal pero sin relleno: riguroso, objetivo y bien argumentado, eliminando la verborrea vacía y los rodeos.',
+  simple: 'Lenguaje sencillo y accesible: oraciones directas, vocabulario común y explicaciones llanas sin tecnicismos innecesarios. Fácil de entender a la primera.',
+  executive: 'Resumen ejecutivo de alto impacto: síntesis en 2 o 3 párrafos muy breves de los puntos clave, datos esenciales y conclusiones prácticas (máximo 120 palabras).',
 };
 const STYLES_EN = {
-  natural: 'Conversational but professional, like a good feature article written by a person: warm, clear, with the occasional short sentence that lands a point.',
-  academic: 'Academic register: precise, formal connectors (however, therefore, insofar as), more elaborate sentences, no empty jargon.',
-  simple: 'Plain language: short sentences, everyday words, explain any technical term briefly. A 14-year-old should understand it.',
-  executive: 'Executive summary: condense to the essentials in 2-4 short paragraphs. Lead with the conclusion, then key data, then the practical implication. You may halve the length.',
+  natural: 'Conversational and authentically human, like a sharp feature article: direct, clear, and unpretentious, cutting fluff so the text is punchy and concise without losing substance.',
+  academic: 'Academic register without bloat: precise, objective, and well-structured, cutting hollow jargon and unnecessary padding.',
+  simple: 'Plain, accessible language: short, clear sentences and everyday words. Direct and easy for anyone to read.',
+  executive: 'High-impact executive summary: condense key takeaways into 2-3 short paragraphs focusing on conclusions and hard facts (at most 120 words).',
 };
 
 function buildPrompts(mode, preset, isEnglish, text, styleGuide, calibration) {
@@ -658,14 +658,19 @@ function buildPrompts(mode, preset, isEnglish, text, styleGuide, calibration) {
       userPrompt: 'Correct this text:\n\n' + text,
     };
     return {
-      systemPrompt: 'You are an experienced human editor who rewrites drafts into natural, flowing prose.\n' +
-        'Rewrite substantially, do not just swap synonyms: restructure sentences, merge short ones and split long ones, vary sentence length and rhythm, reorder ideas within a paragraph when it reads better, and use natural connectors.\n' +
-        'Output clean plain text in paragraphs. No Markdown at all: turn headings into a natural opening sentence of the paragraph, turn bullet lists into connected prose, drop bold/italics and horizontal rules.\n' +
-        'Keep every fact, figure, percentage, name and the overall meaning. Write in English. Do not add new claims.\n' +
-        'Avoid stock phrases: "in conclusion", "it is worth noting", "paradox", "crucial", "in today\'s world", "delve", "landscape", "tapestry", "moreover", "furthermore", "not only... but also". Avoid parallel triplets and list-like cadence.\n' +
+      systemPrompt: 'You are an expert human writer and editor. Your mission is to rewrite drafts, notes, or AI-generated text into authentic, clear, engaging, and genuinely human prose.\n' +
+        'Rewrite with authentic human flow, not superficial synonym swapping: restructure sentences, eliminate filler words and circumlocutions, and vary cadence naturally.\n' +
+        'Output clean plain text in paragraphs. No Markdown at all: turn headings into natural introductory sentences, turn bullet lists into connected narrative prose, and drop bold/italics or horizontal rules.\n' +
+        'Cut the fluff and synthesize: make the text somewhat more concise and punchy while keeping every fact, figure, percentage, name, and core insight completely accurate. Write in English. Do not invent new claims.\n' +
+        'Avoid stock phrases and robotic markers: "in conclusion", "it is worth noting", "paradox", "crucial", "in today\'s world", "delve", "landscape", "tapestry", "moreover", "furthermore", "not only... but also", "plays a pivotal role", "seamless", "holistic".\n' +
         'Style: ' + (STYLES_EN[preset] || STYLES_EN.natural) + '\n' +
         'Return only the rewritten text, no title, no preface, no explanation.' + extra,
-      userPrompt: 'Thoroughly rewrite the text between <text> and </text>. Mandatory rules:\n1. Do not copy sentences: give every sentence a new structure; the first sentence must start differently from the original.\n2. Paragraphs of 2-4 sentences separated by a blank line. Vary sentence length a lot: in each paragraph at least one short sentence (under 8 words) and one long one (over 22).\n3. Plain text: no **, #, *, bullets, numbering or ---; lists become prose.\n4. ' + (preset === 'executive' ? 'At most 120 words.' : 'LENGTH: between ' + Math.round(wc * 0.9) + ' and ' + Math.round(wc * 1.1) + ' words (the original has ' + wc + '). Keep EVERY idea, example and figure (do not summarize or omit), but no padding, rhetorical questions or new ideas.') + ' Keep all figures and names. Avoid: paradox, crucial, delve, in conclusion, in today\'s world.\n5. ' + (STYLES_EN[preset] || STYLES_EN.natural) + '\n\n<text>\n' + text + '\n</text>',
+      userPrompt: 'Rewrite the text between <text> and </text> so it reads 100% human, natural, and more concise:\n' +
+        '1. Synthesize and tighten: Cut fluff, repetitive statements, and padding. Make the text punchier and more condensed (around ' + Math.round(wc * 0.70) + '-' + Math.round(wc * 0.85) + ' words; the original has ' + wc + ') while keeping every fact, figure, name, and core insight intact.' + (preset === 'executive' ? ' (Executive Mode: condense into at most 120 words focusing on conclusions and hard facts).' : '') + '\n' +
+        '2. Natural rhythm: Vary cadence organically so it sounds authentic and engaging when read aloud. Avoid formulaic sentence patterns.\n' +
+        '3. Plain text: no **, #, *, bullets, numbering or ---; lists become smooth prose.\n' +
+        '4. Avoid AI clichés: Do not use "delve", "tapestry", "crucial", "testament", "furthermore", "moreover", "in conclusion", "in today\'s world". Keep all figures and names.\n' +
+        '5. ' + (STYLES_EN[preset] || STYLES_EN.natural) + '\n\n<text>\n' + text + '\n</text>',
     };
   }
   if (mode === 'corrector') return {
@@ -673,18 +678,18 @@ function buildPrompts(mode, preset, isEnglish, text, styleGuide, calibration) {
     userPrompt: 'Corrige este texto:\n\n' + text,
   };
   return {
-    systemPrompt: 'Eres un editor con oficio que reescribe borradores para convertirlos en prosa natural y fluida, como la escribiría una persona.\n' +
-      'Reescribe a fondo, no te limites a cambiar sinónimos: reestructura las frases, une las cortas y divide las largas, alterna frases breves y largas, reordena ideas dentro del párrafo si se lee mejor y usa conectores naturales (y es que, eso sí, al final, por eso, mientras tanto, de hecho).\n' +
+    systemPrompt: 'Eres un editor y redactor humano de primer nivel. Tu objetivo es transformar borradores, notas o textos generados por IA en prosa auténtica, viva, fluida y agradable de leer, con voz humana real.\n' +
+      'Reescribe a fondo con naturalidad, no te limites a cambiar sinónimos: reestructura las oraciones, poda la verborrea, las redundancias y los rodeos innecesarios, y usa conectores naturales y cotidianos (pero, sin embargo, por eso, así que, además, de hecho, al fin y al cabo).\n' +
       'Devuelve texto plano limpio en párrafos. Nada de Markdown: convierte cada título en una frase de apertura natural del párrafo, convierte las listas en prosa enlazada y elimina negritas, cursivas y separadores (**, ###, *, ---).\n' +
-      'Conserva todos los datos, cifras, porcentajes, nombres y el sentido del original. Escribe en español. No añadas afirmaciones nuevas.\n' +
-      'Evita muletillas y clichés: "en resumen", "en conclusión", "cabe destacar", "es importante señalar", "paradoja", "crucial", "fundamental", "en un mundo", "en el panorama actual", "a día de hoy", "no solo... sino también", "un tapiz". Evita enumeraciones de tres en tres y el ritmo de lista.\n' +
+      'Sintetiza y ve al grano: haz que el texto quede un poco más resumido y ágil, pero conservando rigurosamente todos los datos, cifras, porcentajes, nombres y el mensaje central. Escribe en español. No inventes afirmaciones nuevas.\n' +
+      'Evita muletillas y clichés de IA: "en resumen", "en conclusión", "cabe destacar", "es importante señalar", "paradoja", "crucial", "fundamental", "en un mundo", "en el panorama actual", "a día de hoy", "no solo... sino también", "un tapiz", "desempeña un papel", "un sinfín de", "adentrarse en". Evita conclusiones artificiales.\n' +
       'Estilo: ' + (STYLES_ES[preset] || STYLES_ES.natural) + '\n' +
       'Devuelve únicamente el texto reescrito, sin título, sin introducción y sin explicaciones.' + extra,
-    userPrompt: 'Reescribe a fondo el texto entre <texto> y </texto>. Reglas obligatorias:\n' +
-      '1. No copies frases del original: cada frase debe tener otra estructura (cambia el orden, el sujeto o el verbo). La primera frase tiene que empezar distinto que el original.\n' +
-      '2. Divide el resultado en párrafos de 2 a 4 frases separados por una línea en blanco. Alterna mucho la longitud: en cada párrafo, al menos una frase corta (menos de 8 palabras) y otra larga (más de 22).\n' +
-      '3. Texto plano: sin **, #, *, viñetas, numeración ni ---. Las listas se cuentan como prosa.\n' +
-      (preset === 'executive' ? '4. Como máximo 120 palabras.' : '4. LONGITUD OBLIGATORIA: entre ' + Math.round(wc * 0.9) + ' y ' + Math.round(wc * 1.1) + ' palabras (el original tiene ' + wc + '). Recorre el original idea por idea y conserva TODAS las ideas, ejemplos y datos (no resumas ni omitas nada), pero sin relleno, preguntas retóricas ni ideas nuevas.') + ' Mantén todas las cifras y nombres. No uses: paradoja, crucial, fundamental, cabe destacar, en resumen, en conclusión, en un mundo.\n' +
+    userPrompt: 'Reescribe el texto entre <texto> y </texto> para que suene 100 % humano, natural y un poco más resumido:\n' +
+      '1. Síntesis y concisión: Poda el relleno, las vueltas y las redundancias. Condensa el mensaje para que quede más directo y ágil (en torno a ' + Math.round(wc * 0.70) + '-' + Math.round(wc * 0.85) + ' palabras; el original tiene ' + wc + '), manteniendo todos los datos, cifras, nombres y argumentos centrales.' + (preset === 'executive' ? ' (Modo Resumen Ejecutivo: sintetiza en como máximo 120 palabras los puntos clave y conclusiones).' : '') + '\n' +
+      '2. Ritmo humano: Varía la cadencia de forma natural y fluida, como quien habla o redacta con soltura, sin frases forzadas ni estructuras mecánicas.\n' +
+      '3. Texto plano: sin **, #, *, viñetas, numeración ni ---. Las listas se cuentan como prosa enlazada.\n' +
+      '4. Sin muletillas de IA: No uses "cabe destacar", "es fundamental", "crucial", "en resumen", "en conclusión", "en el panorama actual", "a día de hoy", "no solo... sino también", "un tapiz". Mantén todas las cifras y nombres.\n' +
       '5. ' + (STYLES_ES[preset] || STYLES_ES.natural) + '\n\n<texto>\n' + text + '\n</texto>',
   };
 }
